@@ -1,0 +1,21 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@layer base {
+  :root {
+    --font-serif: 'Playfair Display', 'Noto Serif Bengali', Georgia, serif;
+    --font-sans: 'Plus Jakarta Sans', 'Noto Sans Bengali', system-ui, sans-serif;
+  }
+}
+
+.font-editorial-title {
+  font-family: 'Playfair Display', 'Noto Serif Bengali', serif;
+}
+
+.font-editorial-body {
+  font-family: 'Lora', 'Noto Serif Bengali', Georgia, serif;
+}
+
+.font-sans-ui {
+  font-family: 'Plus Jakarta Sans', 'Noto Sans Bengali', system-ui, sans-serif;
+}

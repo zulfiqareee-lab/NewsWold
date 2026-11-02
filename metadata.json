@@ -1,0 +1,6 @@
+{
+  "name": "NEWS WORLD",
+  "description": "International bilingual AI-automated news and information portal in Bangla and English with 16 editorial categories, AI generation, and editorial verification.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

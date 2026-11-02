@@ -1,0 +1,133 @@
+{
+  "entities": {
+    "NewsArticle": {
+      "title": "NewsArticle",
+      "description": "An international news article in bilingual format with editorial verification.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "headlineEn": { "type": "string", "maxLength": 500 },
+        "headlineBn": { "type": "string", "maxLength": 500 },
+        "summaryEn": { "type": "string", "maxLength": 2000 },
+        "summaryBn": { "type": "string", "maxLength": 2000 },
+        "contentEn": { "type": "string", "maxLength": 50000 },
+        "contentBn": { "type": "string", "maxLength": 50000 },
+        "categoryId": { "type": "string", "maxLength": 64 },
+        "categorySlug": { "type": "string", "maxLength": 64 },
+        "status": { "type": "string", "enum": ["pending", "under_review", "approved", "published", "rejected", "failed"] },
+        "rejectionReason": { "type": "string", "maxLength": 1000 },
+        "publishedAt": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" },
+        "isBreaking": { "type": "boolean" },
+        "isFeatured": { "type": "boolean" },
+        "isTrending": { "type": "boolean" },
+        "viewsCount": { "type": "number" },
+        "sharesCount": { "type": "number" },
+        "readingTimeMinutes": { "type": "number" }
+      },
+      "required": ["id", "headlineEn", "headlineBn", "status", "categorySlug"]
+    },
+    "Category": {
+      "title": "Category",
+      "description": "One of the 16 editorial categories.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "slug": { "type": "string", "maxLength": 64 },
+        "nameEn": { "type": "string", "maxLength": 128 },
+        "nameBn": { "type": "string", "maxLength": 128 },
+        "descriptionEn": { "type": "string", "maxLength": 1000 },
+        "descriptionBn": { "type": "string", "maxLength": 1000 },
+        "color": { "type": "string", "maxLength": 32 }
+      },
+      "required": ["id", "slug", "nameEn", "nameBn"]
+    },
+    "NewsSource": {
+      "title": "NewsSource",
+      "description": "Reputable international RSS feed or wire agency.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 64 },
+        "name": { "type": "string", "maxLength": 128 },
+        "feedUrl": { "type": "string", "maxLength": 1000 },
+        "categorySlug": { "type": "string", "maxLength": 64 },
+        "isActive": { "type": "boolean" },
+        "fetchCount": { "type": "number" }
+      },
+      "required": ["id", "name", "feedUrl"]
+    },
+    "FacebookPostLog": {
+      "title": "FacebookPostLog",
+      "description": "Audit record of a post to Meta Graph API subject to Bangladesh calendar limit.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "articleId": { "type": "string", "maxLength": 128 },
+        "headline": { "type": "string", "maxLength": 500 },
+        "dateDhaka": { "type": "string", "maxLength": 32 },
+        "slot": { "type": "string", "maxLength": 32 },
+        "status": { "type": "string", "enum": ["success", "failed", "skipped", "duplicate_prevented"] },
+        "fbPostId": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string" }
+      },
+      "required": ["id", "articleId", "dateDhaka", "status"]
+    },
+    "CopyrightComplaint": {
+      "title": "CopyrightComplaint",
+      "description": "DMCA or copyright removal request submitted by a rights owner.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "articleId": { "type": "string", "maxLength": 128 },
+        "articleHeadline": { "type": "string", "maxLength": 500 },
+        "complainantName": { "type": "string", "maxLength": 200 },
+        "complainantEmail": { "type": "string", "maxLength": 200 },
+        "copyrightOwner": { "type": "string", "maxLength": 200 },
+        "infringedWorkUrl": { "type": "string", "maxLength": 1000 },
+        "explanation": { "type": "string", "maxLength": 5000 },
+        "status": { "type": "string", "enum": ["pending", "investigating", "article_unpublished", "dismissed", "resolved"] },
+        "submittedAt": { "type": "string" }
+      },
+      "required": ["id", "complainantName", "complainantEmail", "infringedWorkUrl", "explanation", "status"]
+    },
+    "AdminUser": {
+      "title": "AdminUser",
+      "description": "Authorized administrator user.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 200 },
+        "role": { "type": "string", "enum": ["admin", "superadmin"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "email", "role"]
+    }
+  },
+  "firestore": {
+    "/news/{articleId}": {
+      "schema": "NewsArticle",
+      "description": "Published and drafted international news items."
+    },
+    "/categories/{categoryId}": {
+      "schema": "Category",
+      "description": "The 16 bilingual categories."
+    },
+    "/news_sources/{sourceId}": {
+      "schema": "NewsSource",
+      "description": "International RSS and wire news sources."
+    },
+    "/facebook_post_logs/{logId}": {
+      "schema": "FacebookPostLog",
+      "description": "Daily posting logs enforced in Asia/Dhaka time."
+    },
+    "/copyright_complaints/{complaintId}": {
+      "schema": "CopyrightComplaint",
+      "description": "Copyright and content removal notices."
+    },
+    "/admins/{adminId}": {
+      "schema": "AdminUser",
+      "description": "Authorized administrators."
+    }
+  }
+}
