@@ -144,6 +144,7 @@ export interface WebsiteSettings {
   autoNewsFetchIntervalMinutes: number;
   aiNewsGenerationEnabled: boolean;
   aiImageGenerationEnabled: boolean;
+  autoPublishDirectly?: boolean;
   facebookAutoPostEnabled: boolean;
   freeTierModeNotice: boolean;
 }

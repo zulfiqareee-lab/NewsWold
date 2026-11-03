@@ -16,6 +16,7 @@ import {
 import { CATEGORIES } from '../../data/categories';
 import { VerticalVideoPlayer } from '../../components/video/VerticalVideoPlayer';
 import { PhotocutGenerator } from '../../components/video/PhotocutGenerator';
+import { AdminLoginGate } from '../../components/admin/AdminLoginGate';
 import {
   LayoutDashboard,
   Clock,
@@ -23,6 +24,9 @@ import {
   XCircle,
   AlertOctagon,
   Sparkles,
+  Bot,
+  Zap,
+  Play,
   Image as ImageIcon,
   Rss,
   FolderTree,
@@ -57,7 +61,7 @@ import {
 export const AdminDashboard: React.FC = () => {
   const { lang, t, formatNumber } = useLanguage();
   const { nav, goToHome, goToAdmin, goToArticle } = useNav();
-  const { user, isAdmin, login, logout } = useAuth();
+  const { user, isAdmin, loginWithGoogleAuth, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState<string>(nav.adminTab || 'overview');
 
@@ -123,6 +127,46 @@ export const AdminDashboard: React.FC = () => {
   const [photocutSelectedArticleId, setPhotocutSelectedArticleId] = useState<string>('');
   const [videoStudioInstructions, setVideoStudioInstructions] = useState<string>('');
 
+  // Autonomous News Auto-Pilot Bot State
+  const [botStats, setBotStats] = useState<any>(null);
+  const [triggeringBot, setTriggeringBot] = useState<boolean>(false);
+
+  const handleTriggerBotNow = async () => {
+    try {
+      setTriggeringBot(true);
+      const res = await fetch('/api/admin/bot/trigger', { method: 'POST' });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showNotification(data.message);
+        await fetchAllAdminData();
+      } else {
+        showNotification(data.error || 'Failed to trigger bot', 'error');
+      }
+    } catch (err: any) {
+      showNotification(err.message, 'error');
+    } finally {
+      setTriggeringBot(false);
+    }
+  };
+
+  const handleUpdateBotSettings = async (enabled?: boolean, intervalMinutes?: number, autoPublishDirectly?: boolean) => {
+    try {
+      const res = await fetch('/api/admin/bot/settings', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enabled, intervalMinutes, autoPublishDirectly })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setBotStats(data.data);
+        showNotification(data.message);
+        await fetchAllAdminData();
+      }
+    } catch (err: any) {
+      showNotification(err.message, 'error');
+    }
+  };
+
   const handleSaveSource = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
@@ -186,7 +230,7 @@ export const AdminDashboard: React.FC = () => {
   const fetchAllAdminData = async () => {
     try {
       setLoading(true);
-      const [newsRes, analyticsRes, sourcesRes, fbRes, fbLogsRes, compRes, settingsRes, videosRes, socialRes] = await Promise.all([
+      const [newsRes, analyticsRes, sourcesRes, fbRes, fbLogsRes, compRes, settingsRes, videosRes, socialRes, botRes] = await Promise.all([
         fetch('/api/admin/news'),
         fetch('/api/admin/analytics'),
         fetch('/api/admin/sources'),
@@ -195,7 +239,8 @@ export const AdminDashboard: React.FC = () => {
         fetch('/api/admin/complaints'),
         fetch('/api/admin/settings'),
         fetch('/api/admin/videos'),
-        fetch('/api/admin/social/accounts')
+        fetch('/api/admin/social/accounts'),
+        fetch('/api/admin/bot/status')
       ]);
 
       if (newsRes.ok) {
@@ -236,6 +281,10 @@ export const AdminDashboard: React.FC = () => {
       if (socialRes.ok) {
         const d = await socialRes.json();
         setSocialAccounts(d.data);
+      }
+      if (botRes.ok) {
+        const d = await botRes.json();
+        setBotStats(d.data);
       }
     } catch (err: any) {
       console.error('Failed to load admin data:', err);
@@ -638,6 +687,11 @@ export const AdminDashboard: React.FC = () => {
     { id: 'social-accounts', label: '21. Social Channels & Quotas', icon: Tv },
   ];
 
+  // Restrict access: Only authenticated administrator can access Admin Dashboard
+  if (!isAdmin) {
+    return <AdminLoginGate />;
+  }
+
   return (
     <div className="min-h-screen bg-stone-100 dark:bg-stone-950 text-stone-900 dark:text-stone-100 font-sans">
       {/* Admin Top Banner */}
@@ -669,7 +723,15 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-stone-300 font-medium">Administrator</span>
+            <span className="text-stone-300 font-medium">{user?.email || 'Master Admin'}</span>
+            <button
+              onClick={logout}
+              className="ml-2 px-2.5 py-1 rounded bg-rose-600/90 hover:bg-rose-600 text-white font-medium text-xs transition-colors flex items-center gap-1 shadow-sm"
+              title="Logout from Admin"
+            >
+              <Lock className="w-3 h-3" />
+              <span>{lang === 'bn' ? 'লগআউট' : 'Logout'}</span>
+            </button>
           </div>
         </div>
       </header>
@@ -760,6 +822,134 @@ export const AdminDashboard: React.FC = () => {
                     {rejectedArticles.length}
                   </div>
                 </div>
+              </div>
+
+              {/* AUTONOMOUS AI NEWS AUTO-PILOT BOT (স্বয়ংক্রিয় নিউজ রোবট কন্ট্রোল) */}
+              <div className="p-5 rounded-2xl bg-gradient-to-r from-emerald-950/40 via-stone-900 to-emerald-950/30 border border-emerald-500/30 shadow-lg space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center text-emerald-400">
+                      <Bot className="w-6 h-6 animate-pulse" />
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <h3 className="font-bold text-base text-stone-100">
+                          {lang === 'bn' ? 'স্বয়ংক্রিয় এআই নিউজ রোবট (Auto-Pilot Bot)' : 'Autonomous AI News Auto-Pilot Bot'}
+                        </h3>
+                        <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold uppercase tracking-wider ${
+                          botStats?.enabled
+                            ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
+                            : 'bg-stone-800 text-stone-400 border border-stone-700'
+                        }`}>
+                          {botStats?.enabled ? '🟢 সচল (ACTIVE)' : '⏸️ স্থগিত (PAUSED)'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-stone-400 mt-0.5">
+                        {lang === 'bn'
+                          ? 'এই সিস্টেমটি সচল থাকলে আন্তর্জাতিক সোর্স থেকে নিজে নিজেই নিয়মিত নতুন খবর সংগ্রহ, অনুবাদ ও পাবলিশ করে।'
+                          : 'Autonomously fetches, synthesizes, translates, and publishes international news on schedule.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={handleTriggerBotNow}
+                      disabled={triggeringBot}
+                      className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-stone-950 font-bold text-xs flex items-center gap-2 shadow-sm transition-colors cursor-pointer"
+                    >
+                      <Zap className={`w-4 h-4 ${triggeringBot ? 'animate-spin' : ''}`} />
+                      <span>
+                        {triggeringBot
+                          ? (lang === 'bn' ? 'নিউজ তৈরি হচ্ছে...' : 'Generating News...')
+                          : (lang === 'bn' ? '⚡ এখনই নিউজ তৈরি করুন (Run Now)' : '⚡ Run Auto News Bot Now')}
+                      </span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* Bot Settings & Indicators Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 rounded-xl bg-stone-900/80 border border-stone-800 text-xs">
+                  <div>
+                    <span className="text-stone-400 font-medium">পাবলিশিং মোড (Mode):</span>
+                    <div className="mt-1 flex items-center gap-2">
+                      <button
+                        onClick={() => handleUpdateBotSettings(undefined, undefined, !botStats?.autoPublishDirectly)}
+                        className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-colors ${
+                          botStats?.autoPublishDirectly
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-amber-600 text-white'
+                        }`}
+                      >
+                        {botStats?.autoPublishDirectly ? '🌐 সরাসরি লাইভ পাবলিশ' : '📝 পেন্ডিং রিভিউ খসড়া'}
+                      </button>
+                    </div>
+                    <p className="text-[10px] text-stone-500 mt-1">
+                      {botStats?.autoPublishDirectly
+                        ? 'ওয়েবসাইটে ভিজিটররা সরাসরি তাজা খবর দেখবে।'
+                        : 'এডমিন অনুমোদন করার পর লাইভ হবে।'}
+                    </p>
+                  </div>
+
+                  <div>
+                    <span className="text-stone-400 font-medium">কাজের ব্যবধান (Interval):</span>
+                    <div className="mt-1 flex items-center gap-1.5">
+                      {[15, 30, 60].map((mins) => (
+                        <button
+                          key={mins}
+                          onClick={() => handleUpdateBotSettings(undefined, mins, undefined)}
+                          className={`px-2 py-1 rounded text-[11px] font-mono font-medium transition-colors ${
+                            botStats?.intervalMinutes === mins
+                              ? 'bg-stone-200 text-stone-900 font-bold'
+                              : 'bg-stone-800 text-stone-400 hover:bg-stone-700'
+                          }`}
+                        >
+                          {mins}মিনিট
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-stone-500 mt-1">প্রতি {botStats?.intervalMinutes || 30} মিনিট পর পর নতুন নিউজ আসবে।</p>
+                  </div>
+
+                  <div>
+                    <span className="text-stone-400 font-medium">স্বয়ংক্রিয় পরিসংখ্যান (Stats):</span>
+                    <div className="font-mono text-stone-200 mt-1 space-y-0.5">
+                      <div className="font-bold text-emerald-400 text-sm">
+                        {botStats?.totalGenerated || 0} টি খবর তৈরি হয়েছে
+                      </div>
+                      <div className="text-[11px] text-stone-400">
+                        সর্বশেষ রান: {botStats?.lastRunAt ? new Date(botStats.lastRunAt).toLocaleTimeString() : 'চালু হচ্ছে...'}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-stone-400 font-medium">পরবর্তী রান (Next Auto Run):</span>
+                    <div className="font-mono text-stone-200 mt-1">
+                      <div className="text-xs text-amber-400 font-semibold">
+                        {botStats?.nextRunAt ? new Date(botStats.nextRunAt).toLocaleTimeString() : 'শিগগিরই'}
+                      </div>
+                      <button
+                        onClick={() => handleUpdateBotSettings(!botStats?.enabled, undefined, undefined)}
+                        className="mt-1.5 text-[11px] text-stone-400 hover:text-white underline"
+                      >
+                        {botStats?.enabled ? 'বট সাময়িক বন্ধ করুন' : 'বট চালু করুন'}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Latest Bot Activity Log Preview */}
+                {botStats?.logs && botStats.logs.length > 0 && (
+                  <div className="p-3 rounded-lg bg-stone-950/70 border border-stone-800/80 text-[11px] font-mono text-stone-400 flex items-center justify-between">
+                    <span className="truncate">
+                      📢 <strong className="text-stone-300">সর্বশেষ অ্যাক্টিভিটি:</strong> {botStats.logs[0].message}
+                    </span>
+                    <span className="text-stone-500 shrink-0 ml-3">
+                      {new Date(botStats.logs[0].timestamp).toLocaleTimeString()}
+                    </span>
+                  </div>
+                )}
               </div>
 
               {/* Facebook Limit Status Card (STRICT 4 POSTS/DAY) */}
@@ -1072,11 +1262,45 @@ export const AdminDashboard: React.FC = () => {
           {/* TAB 6: AI NEWS GENERATOR */}
           {activeTab === 'ai-news' && (
             <div className="space-y-6">
-              <div>
-                <h2 className="font-editorial-title text-2xl font-bold">AI News Generator (Gemini Powered)</h2>
-                <p className="text-xs text-stone-500 mt-1">
-                  Synthesize an original bilingual article from factual notes, official press briefings, or wire items. Never copies verbatim.
-                </p>
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h2 className="font-editorial-title text-2xl font-bold">AI News Generator (Gemini Powered)</h2>
+                  <p className="text-xs text-stone-500 mt-1">
+                    Synthesize an original bilingual article from factual notes, official press briefings, or wire items. Never copies verbatim.
+                  </p>
+                </div>
+
+                <button
+                  onClick={handleTriggerBotNow}
+                  disabled={triggeringBot}
+                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-stone-950 font-bold text-xs flex items-center gap-2 shadow-sm transition-colors cursor-pointer shrink-0"
+                >
+                  <Zap className={`w-4 h-4 ${triggeringBot ? 'animate-spin' : ''}`} />
+                  <span>
+                    {triggeringBot
+                      ? (lang === 'bn' ? 'স্বয়ংক্রিয় তৈরি হচ্ছে...' : 'Generating...')
+                      : (lang === 'bn' ? '⚡ স্বয়ংক্রিয় তৈরি করুন (Auto Bot Run)' : '⚡ Run Auto News Bot Now')}
+                  </span>
+                </button>
+              </div>
+
+              {/* Bot Auto-Pilot Mode Banner */}
+              <div className="p-4 rounded-xl bg-emerald-950/30 border border-emerald-500/30 flex items-center justify-between text-xs">
+                <div className="flex items-center gap-3">
+                  <Bot className="w-5 h-5 text-emerald-400 shrink-0" />
+                  <div>
+                    <span className="font-bold text-stone-200">
+                      স্বয়ংক্রিয় ব্যাকগ্রাউন্ড বট: {botStats?.enabled ? '🟢 সচল' : '⏸️ স্থগিত'}
+                    </span>
+                    <p className="text-[11px] text-stone-400 mt-0.5">
+                      প্রতি {botStats?.intervalMinutes || 30} মিনিট পর পর বট নিজে থেকেই খবর সংগ্রহ ও {botStats?.autoPublishDirectly ? 'সরাসরি ওয়েবসাইটে পোস্ট' : 'পেন্ডিং খসড়ায় জমা'} করে।
+                    </p>
+                  </div>
+                </div>
+
+                <span className="font-mono text-emerald-400 font-bold text-[11px] hidden sm:inline">
+                  মোট তৈরি: {botStats?.totalGenerated || 0} টি
+                </span>
               </div>
 
               <div className="p-6 rounded-xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-4 text-xs">
@@ -1946,7 +2170,7 @@ export const AdminDashboard: React.FC = () => {
                       </button>
                     ) : (
                       <button
-                        onClick={login}
+                        onClick={loginWithGoogleAuth}
                         className="px-4 py-2 rounded bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 text-xs font-semibold hover:bg-stone-800 flex items-center gap-2"
                       >
                         <span>Sign In with Google</span>

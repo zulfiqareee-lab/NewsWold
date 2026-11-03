@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useTheme } from '../contexts/ThemeContext';
 import { useNav } from '../contexts/NavigationContext';
+import { useAuth } from '../contexts/AuthContext';
 import { CATEGORIES } from '../data/categories';
 import {
   Search,
@@ -9,6 +10,7 @@ import {
   Moon,
   Sun,
   ShieldCheck,
+  Lock,
   ChevronDown,
   Menu,
   X,
@@ -22,6 +24,7 @@ export const Header: React.FC = () => {
   const { lang, setLang, toggleLang, t, formatNumber } = useLanguage();
   const { theme, toggleTheme } = useTheme();
   const { nav, goToHome, goToLatest, goToBreaking, goToTrending, goToMostRead, goToCategory, goToSearch, goToAdmin, goToAbout } = useNav();
+  const { isAdmin } = useAuth();
 
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
@@ -99,11 +102,27 @@ export const Header: React.FC = () => {
             {/* Admin Portal Gateway */}
             <button
               onClick={() => goToAdmin('overview')}
-              className="flex items-center gap-1 text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition-colors"
-              title="Admin Portal"
+              className={`flex items-center gap-1.5 px-2 py-0.5 rounded text-[11px] font-sans transition-colors ${
+                isAdmin
+                  ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 font-semibold border border-amber-500/30'
+                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100'
+              }`}
+              title={isAdmin ? 'Admin Console (Logged In)' : 'Admin Login (Restricted)'}
             >
-              <ShieldCheck className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
-              <span className="hidden sm:inline font-sans font-medium text-[11px]">{t('adminLogin')}</span>
+              {isAdmin ? (
+                <>
+                  <ShieldCheck className="w-3.5 h-3.5 text-amber-500" />
+                  <span className="hidden sm:inline">Admin Console</span>
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                </>
+              ) : (
+                <>
+                  <Lock className="w-3.5 h-3.5 text-stone-500 dark:text-stone-400" />
+                  <span className="hidden sm:inline font-medium">
+                    {lang === 'bn' ? 'অ্যাডমিন লগইন' : 'Admin Login'}
+                  </span>
+                </>
+              )}
             </button>
           </div>
         </div>
