@@ -50,6 +50,7 @@ import {
   RefreshCw,
   Send,
   Lock,
+  KeyRound,
   ShieldCheck,
   Info,
   Film,
@@ -61,7 +62,7 @@ import {
 export const AdminDashboard: React.FC = () => {
   const { lang, t, formatNumber } = useLanguage();
   const { nav, goToHome, goToAdmin, goToArticle } = useNav();
-  const { user, isAdmin, loginWithGoogleAuth, logout } = useAuth();
+  const { user, isAdmin, loginWithGoogleAuth, changeAdminPassword, logout } = useAuth();
 
   const [activeTab, setActiveTab] = useState<string>(nav.adminTab || 'overview');
 
@@ -164,6 +165,56 @@ export const AdminDashboard: React.FC = () => {
       }
     } catch (err: any) {
       showNotification(err.message, 'error');
+    }
+  };
+
+  // Admin Password Management State
+  const [passwordModalOpen, setPasswordModalOpen] = useState(false);
+  const [currentPassInput, setCurrentPassInput] = useState('');
+  const [newPassInput, setNewPassInput] = useState('');
+  const [confirmPassInput, setConfirmPassInput] = useState('');
+  const [passError, setPassError] = useState('');
+  const [passSuccess, setPassSuccess] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  const handlePasswordChangeSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setPassError('');
+    setPassSuccess('');
+
+    if (!currentPassInput.trim()) {
+      setPassError(lang === 'bn' ? 'বর্তমান পাসওয়ার্ড লিখুন।' : 'Please enter current password.');
+      return;
+    }
+    if (newPassInput.trim().length < 6) {
+      setPassError(lang === 'bn' ? 'নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' : 'New password must be at least 6 characters.');
+      return;
+    }
+    if (newPassInput.trim() !== confirmPassInput.trim()) {
+      setPassError(lang === 'bn' ? 'নতুন পাসওয়ার্ড এবং নিশ্চিতকরণ পাসওয়ার্ড মেলেনি।' : 'Passwords do not match.');
+      return;
+    }
+
+    try {
+      setSavingPassword(true);
+      const res = await changeAdminPassword(currentPassInput, newPassInput);
+      if (res.success) {
+        setPassSuccess(res.message);
+        showNotification(res.message);
+        setCurrentPassInput('');
+        setNewPassInput('');
+        setConfirmPassInput('');
+        setTimeout(() => {
+          setPasswordModalOpen(false);
+          setPassSuccess('');
+        }, 1500);
+      } else {
+        setPassError(res.message);
+      }
+    } catch (err: any) {
+      setPassError(err.message || 'Failed to update password');
+    } finally {
+      setSavingPassword(false);
     }
   };
 
@@ -723,10 +774,24 @@ export const AdminDashboard: React.FC = () => {
 
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-emerald-500" />
-            <span className="text-stone-300 font-medium">{user?.email || 'Master Admin'}</span>
+            <span className="text-stone-300 font-medium">
+              {lang === 'bn' ? 'সিস্টেম অ্যাডমিন' : 'System Admin'}
+            </span>
+            <button
+              onClick={() => {
+                setPassError('');
+                setPassSuccess('');
+                setPasswordModalOpen(true);
+              }}
+              className="ml-2 px-2.5 py-1 rounded bg-stone-800 hover:bg-stone-700 text-stone-200 text-xs font-medium transition-colors flex items-center gap-1 border border-stone-700 cursor-pointer"
+              title={lang === 'bn' ? 'পাসওয়ার্ড পরিবর্তন করুন' : 'Change Admin Password'}
+            >
+              <KeyRound className="w-3 h-3 text-amber-400" />
+              <span>{lang === 'bn' ? 'পাসওয়ার্ড পরিবর্তন' : 'Change Password'}</span>
+            </button>
             <button
               onClick={logout}
-              className="ml-2 px-2.5 py-1 rounded bg-rose-600/90 hover:bg-rose-600 text-white font-medium text-xs transition-colors flex items-center gap-1 shadow-sm"
+              className="ml-1 px-2.5 py-1 rounded bg-rose-600/90 hover:bg-rose-600 text-white font-medium text-xs transition-colors flex items-center gap-1 shadow-sm cursor-pointer"
               title="Logout from Admin"
             >
               <Lock className="w-3 h-3" />
@@ -2144,17 +2209,19 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                     <div>
                       <h4 className="font-bold text-sm text-stone-900 dark:text-stone-100">
-                        {user?.displayName || 'Primary Administrator'}
+                        {user?.displayName || (lang === 'bn' ? 'সিস্টেম অ্যাডমিনিস্ট্রেটর' : 'Primary Administrator')}
                       </h4>
                       <p className="text-stone-500 font-mono text-[11px]">
-                        {user?.email || 'zulfiqareee@gmail.com (Authorized Admin)'}
+                        {user?.email
+                          ? `${user.email.slice(0, 3)}••••@${user.email.split('@')[1] || 'gmail.com'} (${lang === 'bn' ? 'সুরক্ষিত' : 'Protected'})`
+                          : (lang === 'bn' ? 'সুরক্ষিত মাস্টার অ্যাডমিন' : 'Authorized Master Admin (Protected)')}
                       </p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold">
                           ROLE: SUPERADMIN
                         </span>
                         <span className="text-stone-400 text-[10px]">
-                          Auth Provider: Firebase Google OAuth
+                          Auth Provider: Firebase Google OAuth / Master Key
                         </span>
                       </div>
                     </div>
@@ -2164,19 +2231,103 @@ export const AdminDashboard: React.FC = () => {
                     {user ? (
                       <button
                         onClick={logout}
-                        className="px-3 py-1.5 rounded border border-rose-300 text-rose-600 hover:bg-rose-50 text-xs font-semibold"
+                        className="px-3 py-1.5 rounded border border-rose-300 text-rose-600 hover:bg-rose-50 text-xs font-semibold cursor-pointer"
                       >
                         Sign Out
                       </button>
                     ) : (
                       <button
                         onClick={loginWithGoogleAuth}
-                        className="px-4 py-2 rounded bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 text-xs font-semibold hover:bg-stone-800 flex items-center gap-2"
+                        className="px-4 py-2 rounded bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 text-xs font-semibold hover:bg-stone-800 flex items-center gap-2 cursor-pointer"
                       >
                         <span>Sign In with Google</span>
                       </button>
                     )}
                   </div>
+                </div>
+
+                {/* Dedicated Password Change Section */}
+                <div className="p-5 rounded-xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700/60 space-y-4">
+                  <div className="flex items-center gap-2">
+                    <KeyRound className="w-5 h-5 text-amber-500" />
+                    <div>
+                      <h4 className="font-bold text-sm text-stone-900 dark:text-stone-100">
+                        {lang === 'bn' ? 'অ্যাডমিন পাসওয়ার্ড পরিবর্তন' : 'Change Admin Master Password'}
+                      </h4>
+                      <p className="text-stone-500 text-[11px]">
+                        {lang === 'bn'
+                          ? 'আপনি নিজে এখান থেকে যেকোনো সময় আপনার অ্যাডমিন পাসওয়ার্ড পরিবর্তন করতে পারবেন।'
+                          : 'Update your master admin passcode anytime to keep your portal secure.'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {passSuccess && (
+                    <div className="p-2.5 rounded bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+                      {passSuccess}
+                    </div>
+                  )}
+                  {passError && (
+                    <div className="p-2.5 rounded bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+                      {passError}
+                    </div>
+                  )}
+
+                  <form onSubmit={handlePasswordChangeSubmit} className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-stone-600 dark:text-stone-400 text-[11px] font-medium mb-1">
+                        {lang === 'bn' ? 'বর্তমান পাসওয়ার্ড' : 'Current Password'}
+                      </label>
+                      <input
+                        type="password"
+                        value={currentPassInput}
+                        onChange={(e) => setCurrentPassInput(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-3 py-2 rounded bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-stone-600 dark:text-stone-400 text-[11px] font-medium mb-1">
+                        {lang === 'bn' ? 'নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)' : 'New Password (min 6 chars)'}
+                      </label>
+                      <input
+                        type="password"
+                        value={newPassInput}
+                        onChange={(e) => setNewPassInput(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-3 py-2 rounded bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="block text-stone-600 dark:text-stone-400 text-[11px] font-medium mb-1">
+                        {lang === 'bn' ? 'নতুন পাসওয়ার্ড নিশ্চিত করুন' : 'Confirm New Password'}
+                      </label>
+                      <input
+                        type="password"
+                        value={confirmPassInput}
+                        onChange={(e) => setConfirmPassInput(e.target.value)}
+                        placeholder="••••••••"
+                        className="w-full px-3 py-2 rounded bg-white dark:bg-stone-900 border border-stone-300 dark:border-stone-700 text-xs text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div className="md:col-span-3 flex justify-end">
+                      <button
+                        type="submit"
+                        disabled={savingPassword}
+                        className="px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-stone-950 font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
+                      >
+                        <KeyRound className="w-3.5 h-3.5" />
+                        <span>
+                          {savingPassword
+                            ? (lang === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...')
+                            : (lang === 'bn' ? 'পাসওয়ার্ড সংরক্ষণ করুন' : 'Save New Password')}
+                        </span>
+                      </button>
+                    </div>
+                  </form>
                 </div>
 
                 {/* Database Infrastructure Status */}
@@ -2987,6 +3138,113 @@ export const AdminDashboard: React.FC = () => {
                   className="px-4 py-1.5 rounded bg-stone-900 text-white dark:bg-stone-100 dark:text-stone-900 font-semibold hover:bg-stone-800 transition-colors"
                 >
                   {editingSourceId ? 'Save Changes' : 'Add Wire Source'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+      {/* Quick Password Change Modal */}
+      {passwordModalOpen && (
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-stone-900 rounded-2xl border border-stone-200 dark:border-stone-800 max-w-md w-full p-6 space-y-4 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-500 flex items-center justify-center">
+                  <KeyRound className="w-4 h-4" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-stone-900 dark:text-stone-100">
+                    {lang === 'bn' ? 'অ্যাডমিন পাসওয়ার্ড পরিবর্তন' : 'Change Admin Password'}
+                  </h3>
+                  <p className="text-[11px] text-stone-500">
+                    {lang === 'bn' ? 'নতুন পাসওয়ার্ড সেট করুন' : 'Set your new secret passcode'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => {
+                  setPasswordModalOpen(false);
+                  setPassError('');
+                  setPassSuccess('');
+                }}
+                className="text-stone-400 hover:text-stone-600 text-sm cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {passSuccess && (
+              <div className="p-2.5 rounded-lg bg-emerald-500/15 border border-emerald-500/30 text-emerald-700 dark:text-emerald-300 text-xs font-semibold">
+                {passSuccess}
+              </div>
+            )}
+            {passError && (
+              <div className="p-2.5 rounded-lg bg-rose-500/15 border border-rose-500/30 text-rose-700 dark:text-rose-300 text-xs font-semibold">
+                {passError}
+              </div>
+            )}
+
+            <form onSubmit={handlePasswordChangeSubmit} className="space-y-3 text-xs">
+              <div>
+                <label className="block text-stone-700 dark:text-stone-300 font-medium mb-1">
+                  {lang === 'bn' ? 'বর্তমান পাসওয়ার্ড' : 'Current Password'}
+                </label>
+                <input
+                  type="password"
+                  value={currentPassInput}
+                  onChange={(e) => setCurrentPassInput(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-stone-700 dark:text-stone-300 font-medium mb-1">
+                  {lang === 'bn' ? 'নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)' : 'New Password (min 6 characters)'}
+                </label>
+                <input
+                  type="password"
+                  value={newPassInput}
+                  onChange={(e) => setNewPassInput(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-stone-700 dark:text-stone-300 font-medium mb-1">
+                  {lang === 'bn' ? 'নতুন পাসওয়ার্ড নিশ্চিত করুন' : 'Confirm New Password'}
+                </label>
+                <input
+                  type="password"
+                  value={confirmPassInput}
+                  onChange={(e) => setConfirmPassInput(e.target.value)}
+                  placeholder="••••••••"
+                  className="w-full px-3 py-2 rounded-lg bg-stone-50 dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-900 dark:text-stone-100 focus:outline-none focus:border-amber-500"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2 pt-2 border-t border-stone-200 dark:border-stone-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPasswordModalOpen(false);
+                    setPassError('');
+                    setPassSuccess('');
+                  }}
+                  className="px-3 py-1.5 rounded-lg border border-stone-300 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 text-stone-700 dark:text-stone-300 font-medium cursor-pointer"
+                >
+                  {lang === 'bn' ? 'বাতিল' : 'Cancel'}
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingPassword}
+                  className="px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-stone-950 font-bold transition-colors cursor-pointer"
+                >
+                  {savingPassword
+                    ? (lang === 'bn' ? 'সংরক্ষণ হচ্ছে...' : 'Saving...')
+                    : (lang === 'bn' ? 'পাসওয়ার্ড সংরক্ষণ' : 'Save Password')}
                 </button>
               </div>
             </form>

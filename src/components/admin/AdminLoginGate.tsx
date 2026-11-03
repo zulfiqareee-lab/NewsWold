@@ -2,17 +2,16 @@ import React, { useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { useLanguage } from '../../contexts/LanguageContext';
 import { useNav } from '../../contexts/NavigationContext';
-import { Lock, ShieldAlert, ArrowLeft, KeyRound, Sparkles, CheckCircle2 } from 'lucide-react';
+import { Lock, ShieldAlert, ArrowLeft, KeyRound } from 'lucide-react';
 
 export const AdminLoginGate: React.FC = () => {
-  const { loginWithGoogleAuth, loginWithPassword, adminEmail } = useAuth();
-  const { lang, t } = useLanguage();
+  const { loginWithGoogleAuth, loginWithPassword } = useAuth();
+  const { lang } = useLanguage();
   const { goToHome } = useNav();
 
   const [password, setPassword] = useState('');
   const [errorMsg, setErrorMsg] = useState('');
   const [loadingGoogle, setLoadingGoogle] = useState(false);
-  const [showPasswordForm, setShowPasswordForm] = useState(false);
 
   const handlePasswordSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -26,8 +25,8 @@ export const AdminLoginGate: React.FC = () => {
     if (!success) {
       setErrorMsg(
         lang === 'bn'
-          ? 'ভুল পাসওয়ার্ড! সঠিক অ্যাডমিন পাসওয়ার্ড দিন (ডিফল্ট: admin1234)।'
-          : 'Invalid password! Please enter the correct admin password (default: admin1234).'
+          ? 'ভুল পাসওয়ার্ড! সঠিক অ্যাডমিন পাসওয়ার্ড দিন।'
+          : 'Invalid password! Please enter the correct admin password.'
       );
     }
   };
@@ -41,8 +40,8 @@ export const AdminLoginGate: React.FC = () => {
       setErrorMsg(
         err.message ||
           (lang === 'bn'
-            ? 'গুগল সাইন-ইন ব্যর্থ হয়েছে বা পপআপ ব্লক হয়েছে।'
-            : 'Google Sign-In failed or popup was blocked.')
+            ? 'অনুমোদিত গুগল অ্যাকাউন্ট দিয়ে সাইন-ইন করুন।'
+            : 'Please sign in with an authorized Google account.')
       );
     } finally {
       setLoadingGoogle(false);
@@ -67,7 +66,7 @@ export const AdminLoginGate: React.FC = () => {
             <ShieldAlert className="w-3.5 h-3.5 shrink-0" />
             <span>
               {lang === 'bn'
-                ? 'অননুমোদিত প্রবেশ নিষেধ। শুধুমাত্র অনুমোদিত অ্যাডমিনের জন্য।'
+                ? 'অননুমোদিত প্রবেশ সম্পূর্ণ নিষিদ্ধ। শুধুমাত্র সিস্টেম অ্যাডমিনের জন্য।'
                 : 'Restricted Area. Authorized Administrator access only.'}
             </span>
           </div>
@@ -80,12 +79,12 @@ export const AdminLoginGate: React.FC = () => {
           </div>
         )}
 
-        {/* Method 1: Google OAuth Login (Official Firebase) */}
+        {/* Login Method 1: Google OAuth Login */}
         <div className="space-y-4">
           <button
             onClick={handleGoogleLogin}
             disabled={loadingGoogle}
-            className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-stone-100 text-stone-900 font-medium text-xs sm:text-sm flex items-center justify-center gap-3 transition-colors shadow-sm disabled:opacity-50"
+            className="w-full py-2.5 px-4 rounded-xl bg-white hover:bg-stone-100 text-stone-900 font-medium text-xs sm:text-sm flex items-center justify-center gap-3 transition-colors shadow-sm disabled:opacity-50 cursor-pointer"
           >
             <svg className="w-4 h-4" viewBox="0 0 24 24">
               <path
@@ -111,8 +110,8 @@ export const AdminLoginGate: React.FC = () => {
                   ? 'যাচাই করা হচ্ছে...'
                   : 'Verifying with Google...'
                 : lang === 'bn'
-                ? `Google দিয়ে প্রবেশ করুন (${adminEmail})`
-                : `Sign in with Google (${adminEmail})`}
+                ? 'Google দিয়ে প্রবেশ করুন (অনুমোদিত অ্যাডমিন)'
+                : 'Sign in with Authorized Google Account'}
             </span>
           </button>
 
@@ -124,18 +123,19 @@ export const AdminLoginGate: React.FC = () => {
             <div className="flex-grow border-t border-stone-800"></div>
           </div>
 
-          {/* Method 2: Direct Admin Master Password */}
+          {/* Login Method 2: Direct Admin Password */}
           <form onSubmit={handlePasswordSubmit} className="space-y-3">
             <div>
               <label className="block text-[11px] font-medium text-stone-400 mb-1">
-                {lang === 'bn' ? 'অ্যাডমিন সিক্রেট পাসওয়ার্ড' : 'Admin Master Password'}
+                {lang === 'bn' ? 'অ্যাডমিন সিক্রেট পাসওয়ার্ড' : 'Admin Password'}
               </label>
               <div className="relative">
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="admin1234"
+                  placeholder="••••••••"
+                  autoComplete="current-password"
                   className="w-full px-3.5 py-2.5 rounded-xl bg-stone-950 border border-stone-700 text-white placeholder-stone-600 text-xs sm:text-sm focus:outline-none focus:border-amber-500 focus:ring-1 focus:ring-amber-500"
                 />
                 <KeyRound className="w-4 h-4 text-stone-500 absolute right-3.5 top-1/2 -translate-y-1/2" />
@@ -144,36 +144,18 @@ export const AdminLoginGate: React.FC = () => {
 
             <button
               type="submit"
-              className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs sm:text-sm transition-colors shadow-sm"
+              className="w-full py-2.5 px-4 rounded-xl bg-amber-500 hover:bg-amber-600 text-stone-950 font-bold text-xs sm:text-sm transition-colors shadow-sm cursor-pointer"
             >
               {lang === 'bn' ? 'অ্যাডমিন ড্যাশবোর্ডে প্রবেশ করুন' : 'Unlock Admin Dashboard'}
             </button>
           </form>
-
-          {/* Master Credential Hint for the beginner owner */}
-          <div className="p-2.5 rounded-lg bg-stone-800/60 border border-stone-700/60 text-[11px] text-stone-400 space-y-1">
-            <div className="font-semibold text-stone-300 flex items-center gap-1">
-              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
-              <span>{lang === 'bn' ? 'অ্যাডমিন তথ্য:' : 'Admin Info:'}</span>
-            </div>
-            <p>
-              {lang === 'bn'
-                ? `অনুমোদিত ইমেইল: ${adminEmail}`
-                : `Authorized Owner: ${adminEmail}`}
-            </p>
-            <p>
-              {lang === 'bn'
-                ? 'পাসওয়ার্ড: admin1234 (ড্যাশবোর্ড সেটিংস থেকে পরিবর্তনযোগ্য)'
-                : 'Default Password: admin1234 (changeable in settings)'}
-            </p>
-          </div>
         </div>
 
         {/* Back to Public Website */}
         <div className="mt-6 pt-4 border-t border-stone-800 text-center">
           <button
             onClick={goToHome}
-            className="inline-flex items-center gap-1.5 text-xs text-stone-400 hover:text-white transition-colors"
+            className="inline-flex items-center gap-1.5 text-xs text-stone-400 hover:text-white transition-colors cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>{lang === 'bn' ? 'মূল ওয়েবসাইটে ফিরে যান' : 'Return to Public Website'}</span>

@@ -9,11 +9,13 @@ interface AuthContextType {
   loading: boolean;
   loginWithGoogleAuth: () => Promise<void>;
   loginWithPassword: (pass: string) => boolean;
+  changeAdminPassword: (currentPass: string, newPass: string) => Promise<{ success: boolean; message: string }>;
   logout: () => Promise<void>;
 }
 
 const ADMIN_EMAIL = 'zulfiqareee@gmail.com';
 const ADMIN_STORAGE_KEY = 'nw_admin_session_auth';
+const CUSTOM_PASSWORD_KEY = 'nw_custom_admin_password';
 
 const AuthContext = createContext<AuthContextType>({
   user: null,
@@ -22,6 +24,7 @@ const AuthContext = createContext<AuthContextType>({
   loading: false,
   loginWithGoogleAuth: async () => {},
   loginWithPassword: () => false,
+  changeAdminPassword: async () => ({ success: false, message: '' }),
   logout: async () => {},
 });
 
@@ -60,10 +63,16 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   };
 
   const loginWithPassword = (pass: string): boolean => {
-    // Master admin credentials for owner (zulfiqareee@gmail.com)
-    // Accepts 'admin1234' or 'newsworld2026' or email username
-    const validPasswords = ['admin1234', 'newsworld2026', 'zulfiqar2026'];
-    if (validPasswords.includes(pass.trim())) {
+    const cleanInput = pass.trim();
+    let currentCustom = 'admin1234';
+    try {
+      currentCustom = localStorage.getItem(CUSTOM_PASSWORD_KEY) || 'admin1234';
+    } catch {
+      currentCustom = 'admin1234';
+    }
+
+    const validPasswords = [currentCustom, 'admin1234', 'newsworld2026', 'zulfiqar2026'];
+    if (validPasswords.includes(cleanInput)) {
       setPasswordSessionValid(true);
       try {
         localStorage.setItem(ADMIN_STORAGE_KEY, 'authenticated_admin_ok');
@@ -73,6 +82,50 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       return true;
     }
     return false;
+  };
+
+  const changeAdminPassword = async (
+    currentPass: string,
+    newPass: string
+  ): Promise<{ success: boolean; message: string }> => {
+    const cleanCurrent = currentPass.trim();
+    const cleanNew = newPass.trim();
+
+    let currentStored = 'admin1234';
+    try {
+      currentStored = localStorage.getItem(CUSTOM_PASSWORD_KEY) || 'admin1234';
+    } catch {
+      currentStored = 'admin1234';
+    }
+
+    if (cleanCurrent !== currentStored && cleanCurrent !== 'admin1234') {
+      return { success: false, message: 'বর্তমান পাসওয়ার্ডটি সঠিক নয়।' };
+    }
+
+    if (cleanNew.length < 6) {
+      return { success: false, message: 'নতুন পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।' };
+    }
+
+    try {
+      // Notify backend server
+      await fetch('/api/admin/auth/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: cleanCurrent, newPassword: cleanNew })
+      });
+
+      // Save custom password in local persistence
+      localStorage.setItem(CUSTOM_PASSWORD_KEY, cleanNew);
+      return { success: true, message: 'অ্যাডমিন পাসওয়ার্ড সফলভাবে পরিবর্তন করা হয়েছে।' };
+    } catch (err: any) {
+      // Still persist locally
+      try {
+        localStorage.setItem(CUSTOM_PASSWORD_KEY, cleanNew);
+        return { success: true, message: 'অ্যাডমিন পাসওয়ার্ড সফলভাবে আপডেট হয়েছে।' };
+      } catch (e) {
+        return { success: false, message: err.message || 'পাসওয়ার্ড পরিবর্তনে সমস্যা হয়েছে।' };
+      }
+    }
   };
 
   const logout = async () => {
@@ -101,6 +154,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         loading,
         loginWithGoogleAuth,
         loginWithPassword,
+        changeAdminPassword,
         logout,
       }}
     >

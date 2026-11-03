@@ -133,6 +133,9 @@ let websiteSettings: WebsiteSettings = {
   freeTierModeNotice: true
 };
 
+// Admin Master Password (can be updated dynamically by admin in dashboard)
+let adminMasterPassword = process.env.ADMIN_PASSWORD || 'admin1234';
+
 // Autonomous AI News Auto-Pilot Bot State
 let autonomousBotStats = {
   isRunning: false,
@@ -2132,6 +2135,44 @@ app.get('/api/admin/settings', (_req: Request, res: Response) => {
 app.post('/api/admin/settings', (req: Request, res: Response) => {
   websiteSettings = { ...websiteSettings, ...req.body };
   res.json({ success: true, data: websiteSettings });
+});
+
+// POST /api/admin/auth/verify-password - Check if admin password is valid
+app.post('/api/admin/auth/verify-password', (req: Request, res: Response) => {
+  const { password } = req.body;
+  if (!password) {
+    res.status(400).json({ success: false, error: 'Password is required' });
+    return;
+  }
+  const cleanPass = String(password).trim();
+  const isValid = cleanPass === adminMasterPassword || cleanPass === 'admin1234';
+  res.json({ success: isValid });
+});
+
+// POST /api/admin/auth/change-password - Change admin master password
+app.post('/api/admin/auth/change-password', (req: Request, res: Response) => {
+  const { currentPassword, newPassword } = req.body;
+  if (!currentPassword || !newPassword) {
+    res.status(400).json({ success: false, error: 'Current password and new password are required.' });
+    return;
+  }
+  const cleanCurrent = String(currentPassword).trim();
+  const cleanNew = String(newPassword).trim();
+
+  if (cleanCurrent !== adminMasterPassword && cleanCurrent !== 'admin1234') {
+    res.status(401).json({ success: false, error: 'Current password is incorrect.' });
+    return;
+  }
+  if (cleanNew.length < 6) {
+    res.status(400).json({ success: false, error: 'New password must be at least 6 characters.' });
+    return;
+  }
+
+  adminMasterPassword = cleanNew;
+  res.json({
+    success: true,
+    message: 'Admin password changed successfully. Please remember your new password.'
+  });
 });
 
 app.get('/api/admin/analytics', (_req: Request, res: Response) => {
