@@ -1,0 +1,62 @@
+name: Build and Package NEWS WORLD
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:
+
+jobs:
+  build-and-package:
+    name: Build & Generate Downloadable Artifact
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install Dependencies
+        run: npm install
+
+      - name: Build Production Website
+        run: npm run build
+
+      - name: Assemble Ready-To-Run Package
+        run: |
+          mkdir -p release-bundle/news-world-app
+          cp -r dist release-bundle/news-world-app/
+          cp -r src release-bundle/news-world-app/
+          cp server.ts release-bundle/news-world-app/
+          cp package.json release-bundle/news-world-app/
+          cp tsconfig.json release-bundle/news-world-app/
+          cp vite.config.ts release-bundle/news-world-app/
+          cp index.html release-bundle/news-world-app/
+          cp .env.example release-bundle/news-world-app/
+          [ -f firebase-applet-config.json ] && cp firebase-applet-config.json release-bundle/news-world-app/ || true
+          [ -f firestore.rules ] && cp firestore.rules release-bundle/news-world-app/ || true
+          [ -f start-windows.bat ] && cp start-windows.bat release-bundle/news-world-app/ || true
+          [ -f start-mac-linux.sh ] && cp start-mac-linux.sh release-bundle/news-world-app/ || true
+          [ -f HOW-TO-RUN.txt ] && cp HOW-TO-RUN.txt release-bundle/news-world-app/ || true
+
+      # 1. Upload Full Ready-To-Run App as GitHub Action Artifact (Like Android APK)
+      - name: Upload Complete App (Full-Stack + Admin + Video Studio)
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEWS-WORLD-Full-App-Ready-To-Run
+          path: release-bundle/news-world-app
+          retention-days: 30
+
+      # 2. Upload Web-Only Static Build (For cPanel, Netlify, Vercel, Hosting)
+      - name: Upload Web Dist Only (Static Production Files)
+        uses: actions/upload-artifact@v4
+        with:
+          name: NEWS-WORLD-Static-Website-dist
+          path: dist
+          retention-days: 30

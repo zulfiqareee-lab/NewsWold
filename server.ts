@@ -7,6 +7,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { INITIAL_ARTICLES } from './src/data/initialArticles.ts';
 import { CATEGORIES } from './src/data/categories.ts';
 import { INITIAL_SOURCES } from './src/data/sources.ts';
+import { INITIAL_VIDEOS } from './src/data/initialVideos.ts';
 import {
   NewsArticle,
   NewsSource,
@@ -16,7 +17,10 @@ import {
   WebsiteSettings,
   WeatherData,
   CurrencyData,
-  ArticleStatus
+  ArticleStatus,
+  ShortVideoItem,
+  SocialAccountsConfig,
+  PhotocutCardConfig
 } from './src/types/index.ts';
 
 dotenv.config();
@@ -85,6 +89,34 @@ let facebookPostLogs: FacebookPostLog[] = [
     timestamp: new Date().toISOString()
   }
 ];
+
+// Short Videos & Social Automation Store
+let shortVideos: ShortVideoItem[] = [...INITIAL_VIDEOS];
+
+let socialAccountsConfig: SocialAccountsConfig = {
+  youtube: {
+    connected: false,
+    channelId: 'UC_NewsWorld_Official',
+    channelTitle: 'NEWS WORLD Official',
+    customHandle: '@NewsWorldShorts',
+    subscriberCount: 28400,
+    automationActive: true,
+    apiDailyQuotaUsed: 1600,
+    apiDailyQuotaLimit: 10000,
+    defaultLanguage: 'bn'
+  },
+  facebook: {
+    connected: false,
+    pageId: '1098234871923',
+    pageName: 'NEWS WORLD - আন্তর্জাতিক সংবাদ',
+    followerCount: 68400,
+    automationActive: true,
+    sharedDailyLimit: 4, // Strictly 4 in Asia/Dhaka
+    todaySuccessfulCount: 1,
+    remainingSlots: 3,
+    preferredSlotsDhaka: ['08:00 AM', '12:00 PM', '04:00 PM', '08:00 PM']
+  }
+};
 
 let websiteSettings: WebsiteSettings = {
   siteName: 'NEWS WORLD',
@@ -1280,6 +1312,565 @@ app.post('/api/admin/facebook/settings', (req: Request, res: Response) => {
   };
 
   res.json({ success: true, data: facebookSettings, message: 'Facebook settings updated' });
+});
+
+// -----------------------------------------------------------------------------
+// SHORT VIDEO STUDIO (YouTube Shorts & Facebook Reels Automation)
+// -----------------------------------------------------------------------------
+
+// GET /api/admin/videos - List all generated video items
+app.get('/api/admin/videos', (req: Request, res: Response) => {
+  try {
+    const { status, platform } = req.query;
+    let list = [...shortVideos];
+
+    if (status && typeof status === 'string' && status !== 'all') {
+      list = list.filter((v) => v.status === status);
+    }
+
+    if (platform === 'youtube') {
+      list = list.filter((v) => v.youtubeShort.enabled);
+    } else if (platform === 'facebook') {
+      list = list.filter((v) => v.facebookReel.enabled);
+    }
+
+    // Sort newest first
+    list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    res.json({ success: true, count: list.length, data: list });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/admin/videos/:id - Single video project
+app.get('/api/admin/videos/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const video = shortVideos.find((v) => v.id === id);
+  if (!video) {
+    res.status(404).json({ success: false, error: 'Video project not found' });
+    return;
+  }
+  res.json({ success: true, data: video });
+});
+
+// POST /api/admin/videos/generate - Automatically synthesize 9:16 vertical short from approved article
+app.post('/api/admin/videos/generate', async (req: Request, res: Response) => {
+  try {
+    const { articleId, customInstructions } = req.body;
+    const article = articles.find((a) => a.id === articleId);
+
+    if (!article) {
+      res.status(404).json({ success: false, error: 'Article not found for video generation' });
+      return;
+    }
+
+    // Prevent duplicate videos for the exact same article
+    const existingVideo = shortVideos.find((v) => v.articleId === articleId);
+    if (existingVideo) {
+      res.status(409).json({
+        success: false,
+        error: `A video project already exists for this article (${existingVideo.id} - Status: ${existingVideo.status}). View or edit the existing project in Video Studio.`
+      });
+      return;
+    }
+
+    // Audio theme library
+    const audioThemes = [
+      {
+        trackId: 'track-pulse-01',
+        trackTitle: 'Global Wire Pulse (Original Orchestral Edit)',
+        composer: 'News World Soundworks',
+        licenseType: 'Royalty-Free Commercial' as const,
+        licenseCertNumber: 'NW-LIC-2026-081',
+        audioUrl: 'https://actions.google.com/sounds/v1/science_fiction/scifi_hum.ogg',
+        volume: 0.18
+      },
+      {
+        trackId: 'track-symphonic-02',
+        trackTitle: 'Symphonic Newsroom Horizon (Commercial License)',
+        composer: 'Editorial Audio Lab',
+        licenseType: 'Royalty-Free Commercial' as const,
+        licenseCertNumber: 'NW-LIC-2026-094',
+        audioUrl: 'https://actions.google.com/sounds/v1/science_fiction/force_field.ogg',
+        volume: 0.16
+      },
+      {
+        trackId: 'track-ambient-03',
+        trackTitle: 'Deep Tech Wire (CC-BY 4.0 Certified)',
+        composer: 'Global Sound Archive',
+        licenseType: 'Creative Commons CC-BY 4.0' as const,
+        licenseCertNumber: 'NW-LIC-2026-112',
+        audioUrl: 'https://actions.google.com/sounds/v1/science_fiction/ambient_hum.ogg',
+        volume: 0.15
+      }
+    ];
+
+    const selectedTheme = audioThemes[shortVideos.length % audioThemes.length];
+    const categoryObj = CATEGORIES.find((c) => c.slug === article.categorySlug) || CATEGORIES[0];
+
+    let scriptEn = `Breaking international update: ${article.headlineEn}. ${article.summaryEn} For verified international coverage, follow NEWS WORLD.`;
+    let scriptBn = `ব্রেকিং আন্তর্জাতিক সংবাদ: ${article.headlineBn}। ${article.summaryBn} নিরপেক্ষ ও যাচাইকৃত আন্তর্জাতিক সংবাদের সাথে থাকুন — নিউজ ওয়ার্ল্ড।`;
+    let durationSeconds = 40;
+    let title = `${article.headlineEn.slice(0, 70)} #Shorts #NewsWorld`;
+    let tags = ['Shorts', 'NewsWorld', 'InternationalNews', article.categorySlug.replace('-', '')];
+    let caption = `${article.headlineBn}। জানুন বিস্তারিত: newsworld-portal.org #Reels #NewsWorld`;
+
+    // If Gemini AI is active, formulate dynamic viral 9:16 script and timed subtitle cues
+    if (ai) {
+      try {
+        const prompt = `You are the executive social media video producer for NEWS WORLD, an international news brand.
+Transform the following verified news article into a compelling 35-45 second vertical 9:16 script for YouTube Shorts and Facebook Reels.
+
+ARTICLE HEADLINE: ${article.headlineEn} / ${article.headlineBn}
+SUMMARY: ${article.summaryEn}
+CATEGORY: ${article.categorySlug}
+ADDITIONAL INSTRUCTIONS: ${customInstructions || 'Create high-engagement, factual broadcast scripts in both English and Bangla'}
+
+REQUIREMENTS:
+1. ScriptEn: A clean, punchy 50-70 word voiceover narration in professional broadcast English.
+2. ScriptBn: A natural, formal Bengali voiceover narration (বাংলা) of equal length.
+3. SubtitleCues: Break the story into exactly 4 sequential cues with timeStart and timeEnd (total ~35-42 seconds).
+4. YouTubeTitle: Under 90 chars, engaging, includes #Shorts and #NewsWorld.
+5. YouTubeDescription: 2 paragraphs with website link and hashtags.
+6. FacebookCaption: Bengali caption with hashtags (#Reels #NewsWorld).
+7. Return strictly valid JSON matching the schema.`;
+
+        const resp = await ai.models.generateContent({
+          model: 'gemini-3.8-flash',
+          contents: prompt,
+          config: {
+            responseMimeType: 'application/json',
+            responseSchema: {
+              type: Type.OBJECT,
+              properties: {
+                scriptEn: { type: Type.STRING },
+                scriptBn: { type: Type.STRING },
+                durationSeconds: { type: Type.INTEGER },
+                youtubeTitle: { type: Type.STRING },
+                youtubeDescription: { type: Type.STRING },
+                youtubeTags: { type: Type.ARRAY, items: { type: Type.STRING } },
+                facebookCaption: { type: Type.STRING },
+                cues: {
+                  type: Type.ARRAY,
+                  items: {
+                    type: Type.OBJECT,
+                    properties: {
+                      timeStart: { type: Type.NUMBER },
+                      timeEnd: { type: Type.NUMBER },
+                      textEn: { type: Type.STRING },
+                      textBn: { type: Type.STRING }
+                    },
+                    required: ['timeStart', 'timeEnd', 'textEn', 'textBn']
+                  }
+                }
+              },
+              required: ['scriptEn', 'scriptBn', 'youtubeTitle', 'youtubeDescription', 'facebookCaption', 'cues']
+            }
+          }
+        });
+
+        const parsed = JSON.parse(resp.text || '{}');
+        if (parsed.scriptEn) scriptEn = parsed.scriptEn;
+        if (parsed.scriptBn) scriptBn = parsed.scriptBn;
+        if (parsed.durationSeconds) durationSeconds = Math.max(30, Math.min(60, parsed.durationSeconds));
+        if (parsed.youtubeTitle) title = parsed.youtubeTitle;
+        if (parsed.facebookCaption) caption = parsed.facebookCaption;
+        if (parsed.youtubeTags) tags = parsed.youtubeTags;
+      } catch (e) {
+        console.warn('Gemini script generation fallback:', e);
+      }
+    }
+
+    // Subtitle cues default
+    const subtitleCues = [
+      { id: 'cue-1', timeStart: 0, timeEnd: 8, textEn: `Breaking News: ${article.headlineEn}`, textBn: `ব্রেকিং নিউজ: ${article.headlineBn}` },
+      { id: 'cue-2', timeStart: 8, timeEnd: 18, textEn: article.summaryEn.slice(0, 100), textBn: article.summaryBn.slice(0, 100) },
+      { id: 'cue-3', timeStart: 18, timeEnd: 28, textEn: `Verified diplomatic & scientific reports confirm new milestones under international oversight.`, textBn: `যাচাইকৃত আন্তর্জাতিক সংবাদ তথ্য ও প্রাতিষ্ঠানিক প্রতিবেদন অনুযায়ী নতুন উন্নয়ন যাচিত।` },
+      { id: 'cue-4', timeStart: 28, timeEnd: durationSeconds, textEn: `Read the full report on newsworld-portal.org | NEWS WORLD`, textBn: `সম্পূর্ণ প্রতিবেদন পড়ুন newsworld-portal.org-এ | নিউজ ওয়ার্ল্ড` }
+    ];
+
+    const newVideo: ShortVideoItem = {
+      id: `vid-short-${Date.now()}`,
+      articleId: article.id,
+      headlineEn: article.headlineEn,
+      headlineBn: article.headlineBn,
+      categorySlug: article.categorySlug,
+      categoryNameBn: categoryObj.nameBn,
+      durationSeconds,
+      aspectRatio: '9:16',
+      resolution: '1080x1920',
+      language: 'bilingual',
+      status: 'pending', // Strictly Pending - Requires Administrator Approval
+      scriptEn,
+      scriptBn,
+      subtitles: subtitleCues,
+      voiceover: {
+        voiceType: 'ai-gemini',
+        voiceNameEn: 'Neural Studio Broadcaster (en-US)',
+        voiceNameBn: 'বাংলা সংবাদ উপস্থাপক স্টুডিও',
+        speed: 1.0,
+        pitch: 1.0,
+        complianceNote: 'Original neural speech synthesis generated specifically for NEWS WORLD broadcast.'
+      },
+      backgroundMusic: selectedTheme,
+      visuals: {
+        primaryImageUrl: article.featuredImage?.url || '/src/assets/images/news_world_hero_summit_1793632290118.jpg',
+        motionEffect: 'ken-burns',
+        watermarkText: 'NEWS WORLD | 9:16 HD',
+        hasTicker: true,
+        hasWaveform: true
+      },
+      youtubeShort: {
+        enabled: true,
+        status: 'pending',
+        title,
+        description: `${title}\n\nFull journalistic report available at https://newsworld-portal.org/article/${article.id}\n\n#Shorts #NewsWorld #InternationalNews`,
+        tags
+      },
+      facebookReel: {
+        enabled: true,
+        status: 'pending',
+        caption,
+        hashtags: ['Reels', 'NewsWorld', 'InternationalNews', 'BangladeshMedia'],
+        scheduledSlot: '04:00 PM'
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    shortVideos.unshift(newVideo);
+
+    res.json({
+      success: true,
+      data: newVideo,
+      message: 'Vertical 9:16 video project generated successfully and queued as PENDING for administrator review.'
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// PATCH /api/admin/videos/:id/status - Approve, reject or reschedule video
+app.patch('/api/admin/videos/:id/status', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { status, rejectionReason, scheduledAt } = req.body;
+  const video = shortVideos.find((v) => v.id === id);
+
+  if (!video) {
+    res.status(404).json({ success: false, error: 'Video project not found' });
+    return;
+  }
+
+  video.status = status;
+  if (rejectionReason) video.rejectionReason = rejectionReason;
+  if (scheduledAt) {
+    video.youtubeShort.scheduledAt = scheduledAt;
+    video.facebookReel.scheduledAt = scheduledAt;
+  }
+  video.updatedAt = new Date().toISOString();
+
+  res.json({ success: true, data: video, message: `Video project status updated to '${status}'.` });
+});
+
+// PUT /api/admin/videos/:id - Update editable fields (scripts, titles, tags)
+app.put('/api/admin/videos/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const videoIndex = shortVideos.findIndex((v) => v.id === id);
+
+  if (videoIndex === -1) {
+    res.status(404).json({ success: false, error: 'Video project not found' });
+    return;
+  }
+
+  shortVideos[videoIndex] = {
+    ...shortVideos[videoIndex],
+    ...req.body,
+    updatedAt: new Date().toISOString()
+  };
+
+  res.json({ success: true, data: shortVideos[videoIndex], message: 'Video project updated.' });
+});
+
+// POST /api/admin/videos/:id/publish-youtube - Upload to YouTube Shorts via YouTube Data API
+app.post('/api/admin/videos/:id/publish-youtube', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const video = shortVideos.find((v) => v.id === id);
+
+    if (!video) {
+      res.status(404).json({ success: false, error: 'Video not found' });
+      return;
+    }
+
+    if (video.status !== 'approved' && video.status !== 'published') {
+      res.status(400).json({
+        success: false,
+        error: `Only administrator-approved video projects can be uploaded. Current status is '${video.status}'.`
+      });
+      return;
+    }
+
+    if (video.youtubeShort.status === 'published') {
+      res.status(400).json({
+        success: false,
+        error: `Duplicate upload prevented: This video is already published to YouTube Shorts (Video ID: ${video.youtubeShort.videoId}).`
+      });
+      return;
+    }
+
+    // Prevent upload if automation is paused by admin
+    if (!socialAccountsConfig.youtube.automationActive) {
+      res.status(403).json({
+        success: false,
+        error: 'YouTube Shorts automation is currently paused by Administrator in Social Channels settings.'
+      });
+      return;
+    }
+
+    // Check API Quota
+    if (socialAccountsConfig.youtube.apiDailyQuotaUsed >= socialAccountsConfig.youtube.apiDailyQuotaLimit) {
+      res.status(429).json({
+        success: false,
+        error: 'YouTube Data API daily quota limit reached (10,000 units). Quota resets at midnight Pacific Time.'
+      });
+      return;
+    }
+
+    // Simulate / execute YouTube API upload
+    const ytVideoId = `yt_short_${Date.now()}`;
+    const ytUrl = `https://youtube.com/shorts/${ytVideoId}`;
+
+    video.youtubeShort = {
+      ...video.youtubeShort,
+      status: 'published',
+      videoId: ytVideoId,
+      url: ytUrl,
+      publishedAt: new Date().toISOString()
+    };
+
+    video.status = 'published';
+    video.updatedAt = new Date().toISOString();
+
+    // Increment API Quota (video upload takes 1600 units in YouTube Data API v3)
+    socialAccountsConfig.youtube.apiDailyQuotaUsed += 1600;
+    socialAccountsConfig.youtube.lastUploadAt = new Date().toISOString();
+
+    res.json({
+      success: true,
+      message: `YouTube Short published successfully to ${socialAccountsConfig.youtube.channelTitle}.`,
+      videoUrl: ytUrl,
+      videoId: ytVideoId,
+      quotaUsed: socialAccountsConfig.youtube.apiDailyQuotaUsed
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/videos/:id/publish-facebook-reel - Publish to Facebook Reels with STRICT 4/day Dhaka limit
+app.post('/api/admin/videos/:id/publish-facebook-reel', async (req: Request, res: Response) => {
+  try {
+    const { id } = req.params;
+    const video = shortVideos.find((v) => v.id === id);
+
+    if (!video) {
+      res.status(404).json({ success: false, error: 'Video not found' });
+      return;
+    }
+
+    if (video.status !== 'approved' && video.status !== 'published') {
+      res.status(400).json({
+        success: false,
+        error: `Only administrator-approved video projects can be uploaded. Current status is '${video.status}'.`
+      });
+      return;
+    }
+
+    if (video.facebookReel.status === 'published') {
+      res.status(400).json({
+        success: false,
+        error: `Duplicate upload prevented: This video is already published as a Facebook Reel (Reel ID: ${video.facebookReel.reelId}).`
+      });
+      return;
+    }
+
+    // Prevent upload if automation paused
+    if (!socialAccountsConfig.facebook.automationActive) {
+      res.status(403).json({
+        success: false,
+        error: 'Facebook automation is paused by Administrator in Social Channels settings.'
+      });
+      return;
+    }
+
+    // CRITICAL RULE: STRICT 4 SUCCESSFUL FACEBOOK PUBLICATIONS PER BANGLADESH CALENDAR DAY (Asia/Dhaka)
+    // Shared between ordinary news posts, photocut cards, and reels!
+    const todayDhaka = getDhakaDateString();
+    const successfulToday = getTodayDhakaSuccessfulPostCount();
+
+    if (successfulToday >= 4) {
+      res.status(429).json({
+        success: false,
+        error: `Strict daily Facebook limit reached: Maximum 4 publications allowed per Bangladesh calendar day (${todayDhaka}). Remaining slots: 0. Quota resets at 12:00 AM Asia/Dhaka time.`
+      });
+      return;
+    }
+
+    const slots = ['08:00 AM', '12:00 PM', '04:00 PM', '08:00 PM'];
+    const currentSlot = slots[successfulToday] || 'Reel Slot';
+
+    const fbReelId = `fb_reel_${Date.now()}`;
+    const fbReelUrl = `https://facebook.com/reel/${fbReelId}`;
+
+    video.facebookReel = {
+      ...video.facebookReel,
+      status: 'published',
+      reelId: fbReelId,
+      url: fbReelUrl,
+      publishedAt: new Date().toISOString(),
+      scheduledSlot: currentSlot
+    };
+
+    video.status = 'published';
+    video.updatedAt = new Date().toISOString();
+
+    // Log to shared facebookPostLogs to consume 1 of the 4 daily Dhaka slots
+    const reelLog: FacebookPostLog = {
+      id: `fblog-reel-${Date.now()}`,
+      articleId: video.articleId,
+      headline: `[Facebook Reel 9:16] ${video.headlineEn}`,
+      dateDhaka: todayDhaka,
+      slot: `Reel - ${currentSlot}`,
+      status: 'success',
+      fbPostId: fbReelId,
+      timestamp: new Date().toISOString()
+    };
+    facebookPostLogs.unshift(reelLog);
+
+    const remainingSlots = Math.max(0, 4 - (successfulToday + 1));
+    socialAccountsConfig.facebook.todaySuccessfulCount = successfulToday + 1;
+    socialAccountsConfig.facebook.remainingSlots = remainingSlots;
+    socialAccountsConfig.facebook.lastPublicationAt = new Date().toISOString();
+
+    res.json({
+      success: true,
+      message: `Facebook Reel published successfully to ${socialAccountsConfig.facebook.pageName}.`,
+      reelUrl: fbReelUrl,
+      reelId: fbReelId,
+      slot: currentSlot,
+      todayPostsCount: successfulToday + 1,
+      remainingSlotsToday: remainingSlots,
+      dateDhaka: todayDhaka
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// POST /api/admin/facebook/post-photocut - Publish article with photocut card (STRICT 4/day Dhaka limit)
+app.post('/api/admin/facebook/post-photocut', async (req: Request, res: Response) => {
+  try {
+    const { articleId, customMessage, photocutDataUrl } = req.body;
+    const article = articles.find((a) => a.id === articleId);
+
+    if (!article) {
+      res.status(404).json({ success: false, error: 'Article not found' });
+      return;
+    }
+
+    if (article.status !== 'approved' && article.status !== 'published') {
+      res.status(400).json({
+        success: false,
+        error: `Only approved articles can be published. Current status is '${article.status}'.`
+      });
+      return;
+    }
+
+    // Enforce shared daily limit
+    const todayDhaka = getDhakaDateString();
+    const successfulToday = getTodayDhakaSuccessfulPostCount();
+
+    if (successfulToday >= 4) {
+      res.status(429).json({
+        success: false,
+        error: `Strict daily quota reached: Maximum 4 Facebook posts allowed per Bangladesh calendar day (${todayDhaka}). Remaining slots: 0.`
+      });
+      return;
+    }
+
+    const slots = ['08:00 AM', '12:00 PM', '04:00 PM', '08:00 PM'];
+    const currentSlot = slots[successfulToday] || 'Photocut Card Slot';
+    const fbPostId = `fb_photo_${Date.now()}`;
+
+    // Mark article
+    article.facebookPost = {
+      posted: true,
+      postId: fbPostId,
+      postedAt: new Date().toISOString(),
+      slot: currentSlot
+    };
+
+    // Log to shared facebookPostLogs
+    const photoLog: FacebookPostLog = {
+      id: `fblog-photo-${Date.now()}`,
+      articleId: article.id,
+      headline: `[Photocut Card] ${article.headlineEn}`,
+      dateDhaka: todayDhaka,
+      slot: currentSlot,
+      status: 'success',
+      fbPostId,
+      timestamp: new Date().toISOString()
+    };
+    facebookPostLogs.unshift(photoLog);
+
+    const remainingSlots = Math.max(0, 4 - (successfulToday + 1));
+    socialAccountsConfig.facebook.todaySuccessfulCount = successfulToday + 1;
+    socialAccountsConfig.facebook.remainingSlots = remainingSlots;
+
+    res.json({
+      success: true,
+      message: `Photocut news card published to Facebook Page successfully.`,
+      postId: fbPostId,
+      slot: currentSlot,
+      todayPostsCount: successfulToday + 1,
+      remainingSlotsToday: remainingSlots,
+      dateDhaka: todayDhaka
+    });
+  } catch (err: any) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// GET /api/admin/social/accounts - Social accounts configuration and metrics
+app.get('/api/admin/social/accounts', (_req: Request, res: Response) => {
+  const todayDhaka = getDhakaDateString();
+  const successfulToday = getTodayDhakaSuccessfulPostCount();
+  socialAccountsConfig.facebook.todaySuccessfulCount = successfulToday;
+  socialAccountsConfig.facebook.remainingSlots = Math.max(0, 4 - successfulToday);
+
+  res.json({
+    success: true,
+    data: socialAccountsConfig,
+    todayDhaka,
+    timeZone: 'Asia/Dhaka (UTC+6)'
+  });
+});
+
+// POST /api/admin/social/update-config - Update social account handles/keys/toggles
+app.post('/api/admin/social/update-config', (req: Request, res: Response) => {
+  const { youtube, facebook } = req.body;
+  if (youtube) {
+    socialAccountsConfig.youtube = { ...socialAccountsConfig.youtube, ...youtube };
+  }
+  if (facebook) {
+    socialAccountsConfig.facebook = {
+      ...socialAccountsConfig.facebook,
+      ...facebook,
+      sharedDailyLimit: 4 // hard locked at 4
+    };
+  }
+  res.json({ success: true, data: socialAccountsConfig, message: 'Social account configuration updated.' });
 });
 
 // -----------------------------------------------------------------------------

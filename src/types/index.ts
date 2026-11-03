@@ -165,3 +165,147 @@ export interface CurrencyData {
   lastUpdated: string;
   rates: Record<string, number>;
 }
+
+// -----------------------------------------------------------------------------
+// SHORT VIDEO & SOCIAL AUTOMATION TYPES (YouTube Shorts & Facebook Reels)
+// -----------------------------------------------------------------------------
+
+export interface VideoSubtitleCue {
+  id: string;
+  timeStart: number; // in seconds
+  timeEnd: number;   // in seconds
+  textEn: string;
+  textBn: string;
+}
+
+export type VideoApprovalStatus = 'pending' | 'under_review' | 'approved' | 'published' | 'rejected' | 'failed';
+
+export interface ShortVideoItem {
+  id: string;
+  articleId: string;
+  headlineEn: string;
+  headlineBn: string;
+  categorySlug: string;
+  categoryNameBn: string;
+  durationSeconds: number; // 30-60s
+  aspectRatio: '9:16';
+  resolution: string; // e.g. "1080x1920"
+  language: 'bn' | 'en' | 'bilingual';
+  status: VideoApprovalStatus;
+  rejectionReason?: string;
+  
+  // Scripts
+  scriptEn: string;
+  scriptBn: string;
+  subtitles: VideoSubtitleCue[];
+  
+  // Audio & Voice Narration
+  voiceover: {
+    voiceType: 'ai-elevenlabs' | 'ai-gemini' | 'browser-speech';
+    voiceNameEn: string;
+    voiceNameBn: string;
+    speed: number;
+    pitch: number;
+    audioUrlEn?: string;
+    audioUrlBn?: string;
+    complianceNote: string;
+  };
+
+  // Background Music
+  backgroundMusic: {
+    trackId: string;
+    trackTitle: string;
+    composer: string;
+    licenseType: 'Royalty-Free Commercial' | 'Creative Commons CC-BY 4.0';
+    licenseCertNumber: string;
+    audioUrl: string;
+    volume: number; // 0.0 to 1.0
+  };
+
+  // Visual Assets & Branding
+  visuals: {
+    primaryImageUrl: string;
+    motionEffect: 'ken-burns' | 'slow-zoom' | 'pan-horizontal';
+    watermarkText: string;
+    hasTicker: boolean;
+    hasWaveform: boolean;
+  };
+
+  // YouTube Shorts Publishing Metadata
+  youtubeShort: {
+    enabled: boolean;
+    status: 'none' | 'pending' | 'approved' | 'scheduled' | 'published' | 'failed';
+    title: string;
+    description: string;
+    tags: string[];
+    videoId?: string;
+    url?: string;
+    scheduledAt?: string;
+    publishedAt?: string;
+    error?: string;
+  };
+
+  // Facebook Reels Publishing Metadata (strictly subject to shared 4/day Dhaka limit)
+  facebookReel: {
+    enabled: boolean;
+    status: 'none' | 'pending' | 'approved' | 'scheduled' | 'published' | 'failed';
+    caption: string;
+    hashtags: string[];
+    reelId?: string;
+    url?: string;
+    scheduledSlot?: string;
+    scheduledAt?: string;
+    publishedAt?: string;
+    error?: string;
+  };
+
+  photocutCardUrl?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface PhotocutCardConfig {
+  id?: string;
+  articleId: string;
+  format: 'facebook-landscape' | 'facebook-portrait'; // 1200x630 or 1080x1350
+  theme: 'crimson-breaking' | 'editorial-navy' | 'deep-slate' | 'emerald-world';
+  languageMode: 'bn-primary' | 'en-primary' | 'bilingual';
+  kickerTextEn: string;
+  kickerTextBn: string;
+  headlineEn: string;
+  headlineBn: string;
+  categorySlug: string;
+  categoryNameBn: string;
+  sourceName: string;
+  imageUrl: string;
+  dateDhaka: string;
+  watermarkText: string;
+}
+
+export interface SocialAccountsConfig {
+  youtube: {
+    connected: boolean;
+    channelId: string;
+    channelTitle: string;
+    customHandle: string;
+    subscriberCount: number;
+    automationActive: boolean;
+    apiDailyQuotaUsed: number;
+    apiDailyQuotaLimit: number;
+    lastUploadAt?: string;
+    defaultLanguage: 'bn' | 'en';
+  };
+  facebook: {
+    connected: boolean;
+    pageId: string;
+    pageName: string;
+    followerCount: number;
+    automationActive: boolean;
+    sharedDailyLimit: number; // Strictly 4 in Asia/Dhaka
+    todaySuccessfulCount: number; // Shared for Reels + news posts
+    remainingSlots: number;
+    lastPublicationAt?: string;
+    preferredSlotsDhaka: string[];
+  };
+}
+
