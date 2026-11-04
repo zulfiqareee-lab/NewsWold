@@ -130,9 +130,6 @@ export const Footer: React.FC = () => {
             <button onClick={goToCopyrightPolicy} className="hover:text-white transition-colors">
               {t('copyrightPolicy')}
             </button>
-            <button onClick={() => goToCopyrightRemoval()} className="text-amber-400 hover:text-amber-300 transition-colors font-medium">
-              {t('copyrightComplaint')}
-            </button>
             <a href="/sitemap.xml" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">
               {t('sitemap')}
             </a>

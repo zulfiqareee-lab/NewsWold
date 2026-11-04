@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useLanguage } from '../contexts/LanguageContext';
 import { useNav } from '../contexts/NavigationContext';
 import { NewsArticle } from '../types';
-import { Sparkles, CheckCircle2, Share2, Clock, Globe } from 'lucide-react';
+import { SafeImage } from './common/SafeImage';
+import { Sparkles, CheckCircle2 } from 'lucide-react';
 
 interface NewsCardProps {
   article: NewsArticle;
@@ -17,7 +18,6 @@ export const NewsCard: React.FC<NewsCardProps> = ({
 }) => {
   const { lang, t, formatNumber } = useLanguage();
   const { goToArticle, goToCategory } = useNav();
-  const [imageError, setImageError] = useState(false);
 
   const headline = lang === 'bn' ? article.headlineBn : article.headlineEn;
   const summary = lang === 'bn' ? article.summaryBn : article.summaryEn;
@@ -41,61 +41,58 @@ export const NewsCard: React.FC<NewsCardProps> = ({
         onClick={handleCardClick}
         className="group cursor-pointer grid grid-cols-1 lg:grid-cols-12 gap-6 pb-6 border-b border-stone-200 dark:border-stone-800"
       >
-        <div className="lg:col-span-7 overflow-hidden rounded-lg bg-stone-100 dark:bg-stone-900 aspect-[16/9] relative">
-          {!imageError && article.featuredImage?.url ? (
-            <img
-              src={article.featuredImage.url}
-              alt={lang === 'bn' ? article.featuredImage.altTextBn : article.featuredImage.altTextEn}
-              referrerPolicy="no-referrer"
-              onError={() => setImageError(true)}
-              className="w-full h-full object-cover group-hover:scale-[1.02] transition-transform duration-500 ease-out"
-            />
-          ) : (
-            <div className="w-full h-full flex flex-col items-center justify-center p-6 text-stone-400 bg-gradient-to-br from-stone-100 to-stone-200 dark:from-stone-900 dark:to-stone-800">
-              <Globe className="w-12 h-12 mb-2 opacity-50" />
-              <span className="text-xs uppercase tracking-wider font-semibold">NEWS WORLD Editorial</span>
-            </div>
-          )}
+        <div className="lg:col-span-7 overflow-hidden rounded-xl bg-stone-900 aspect-[16/9] relative shadow-md">
+          <SafeImage
+            src={article.featuredImage?.url}
+            alt={lang === 'bn' ? article.featuredImage?.altTextBn : article.featuredImage?.altTextEn}
+            categorySlug={article.categorySlug}
+            className="w-full h-full object-cover group-hover:scale-[1.03] transition-transform duration-500 ease-out"
+          />
 
           {/* Discreet AI image label */}
           {article.featuredImage?.isAiGenerated && (
-            <div className="absolute bottom-2 left-2 px-2 py-1 bg-black/75 backdrop-blur-sm text-stone-200 text-[10px] rounded flex items-center gap-1">
+            <div className="absolute bottom-2.5 left-2.5 px-2 py-1 bg-black/80 backdrop-blur-sm text-stone-200 text-[10px] rounded-md flex items-center gap-1.5 shadow">
               <Sparkles className="w-2.5 h-2.5 text-amber-300" />
               <span>{t('aiGeneratedImage')}</span>
             </div>
           )}
+
+          {article.isBreaking && (
+            <div className="absolute top-2.5 left-2.5 px-2.5 py-1 bg-red-600 text-white font-bold text-[10px] uppercase tracking-wider rounded-md shadow-md animate-pulse">
+              {lang === 'bn' ? 'ব্রেকিং নিউজ' : 'BREAKING NEWS'}
+            </div>
+          )}
         </div>
 
-        <div className="lg:col-span-5 flex flex-col justify-center space-y-3">
-          {/* Unboxed Metadata with · separator */}
-          <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400">
+        <div className="lg:col-span-5 flex flex-col justify-between">
+          <div>
             {showCategory && (
-              <span
-                onClick={(e) => {
-                  e.stopPropagation();
-                  goToCategory(article.categorySlug);
-                }}
-                className="font-bold uppercase tracking-wider text-stone-900 dark:text-stone-100 hover:text-amber-700 transition-colors"
-              >
-                {article.categorySlug.replace('-', ' ')}
-              </span>
+              <div className="flex items-center gap-2 mb-2">
+                <span
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    goToCategory(article.categorySlug);
+                  }}
+                  className="font-bold text-xs uppercase tracking-widest text-amber-700 dark:text-amber-500 hover:underline"
+                >
+                  {article.categorySlug.replace('-', ' ')}
+                </span>
+                <span className="text-stone-300 dark:text-stone-700">·</span>
+                <span className="text-xs text-stone-500">{formattedDate}</span>
+              </div>
             )}
-            <span aria-hidden="true">·</span>
-            <span>{formattedDate}</span>
-            <span aria-hidden="true">·</span>
-            <span>{formatNumber(article.readingTimeMinutes)} {t('readingTime')}</span>
+
+            <h2 className="font-editorial-title text-2xl sm:text-3xl lg:text-4xl font-bold text-stone-950 dark:text-stone-50 group-hover:text-amber-800 dark:group-hover:text-amber-400 transition-colors leading-tight mb-3">
+              {headline}
+            </h2>
+
+            <p className="font-editorial-body text-sm sm:text-base text-stone-700 dark:text-stone-300 line-clamp-3 leading-relaxed mb-4">
+              {summary}
+            </p>
           </div>
 
-          <h2 className="font-editorial-title text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight text-stone-950 dark:text-stone-50 group-hover:text-amber-800 dark:group-hover:text-amber-400 transition-colors">
-            {headline}
-          </h2>
-
-          <p className="font-editorial-body text-sm sm:text-base text-stone-700 dark:text-stone-300 line-clamp-3 leading-relaxed">
-            {summary}
-          </p>
-
-          <div className="pt-2 flex items-center justify-between text-xs text-stone-500 border-t border-stone-200/50 dark:border-stone-800/50">
-            <span className="font-medium text-stone-700 dark:text-stone-300 truncate max-w-[200px]">
+          <div className="flex items-center justify-between text-xs text-stone-500 dark:text-stone-400 pt-3 border-t border-stone-200/60 dark:border-stone-800/60">
+            <span className="font-medium text-stone-700 dark:text-stone-300">
               {authorName}
             </span>
             <div className="flex items-center gap-1.5 text-stone-500">
@@ -115,20 +112,13 @@ export const NewsCard: React.FC<NewsCardProps> = ({
         onClick={handleCardClick}
         className="group cursor-pointer flex gap-4 py-3 border-b border-stone-200/60 dark:border-stone-800/60"
       >
-        <div className="w-24 sm:w-32 aspect-[4/3] rounded overflow-hidden bg-stone-100 dark:bg-stone-900 shrink-0 relative">
-          {!imageError && article.featuredImage?.url ? (
-            <img
-              src={article.featuredImage.url}
-              alt={headline}
-              referrerPolicy="no-referrer"
-              onError={() => setImageError(true)}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <div className="w-full h-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center">
-              <Globe className="w-5 h-5 text-stone-400" />
-            </div>
-          )}
+        <div className="w-24 sm:w-32 aspect-[4/3] rounded-lg overflow-hidden bg-stone-900 shrink-0 relative shadow-sm">
+          <SafeImage
+            src={article.featuredImage?.url}
+            alt={headline}
+            categorySlug={article.categorySlug}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
         </div>
 
         <div className="flex-1 min-w-0 flex flex-col justify-between">
@@ -147,7 +137,7 @@ export const NewsCard: React.FC<NewsCardProps> = ({
           </div>
 
           <div className="text-[11px] text-stone-500 flex items-center gap-2 mt-1">
-            <span>{article.source.name}</span>
+            <span className="truncate">{article.source.name}</span>
           </div>
         </div>
       </article>
@@ -183,30 +173,23 @@ export const NewsCard: React.FC<NewsCardProps> = ({
       className="group cursor-pointer flex flex-col justify-between h-full pb-4 border-b border-stone-200 dark:border-stone-800"
     >
       <div>
-        <div className="overflow-hidden rounded-lg bg-stone-100 dark:bg-stone-900 aspect-[16/9] mb-3 relative">
-          {!imageError && article.featuredImage?.url ? (
-            <img
-              src={article.featuredImage.url}
-              alt={headline}
-              referrerPolicy="no-referrer"
-              onError={() => setImageError(true)}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-          ) : (
-            <div className="w-full h-full bg-stone-200 dark:bg-stone-800 flex items-center justify-center">
-              <Globe className="w-8 h-8 text-stone-400" />
-            </div>
-          )}
+        <div className="overflow-hidden rounded-xl bg-stone-900 aspect-[16/9] mb-3 relative shadow-sm">
+          <SafeImage
+            src={article.featuredImage?.url}
+            alt={headline}
+            categorySlug={article.categorySlug}
+            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+          />
 
           {article.featuredImage?.isAiGenerated && (
-            <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/75 backdrop-blur-sm text-stone-200 text-[9px] rounded flex items-center gap-1">
+            <div className="absolute bottom-2 left-2 px-1.5 py-0.5 bg-black/80 backdrop-blur-sm text-stone-200 text-[9px] rounded flex items-center gap-1">
               <Sparkles className="w-2 h-2 text-amber-300" />
               <span>{t('aiGeneratedImage')}</span>
             </div>
           )}
         </div>
 
-        {/* Unboxed Metadata */}
+        {/* Metadata */}
         <div className="flex items-center gap-2 text-xs text-stone-500 dark:text-stone-400 mb-1.5">
           {showCategory && (
             <span

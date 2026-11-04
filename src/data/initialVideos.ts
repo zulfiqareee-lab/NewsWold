@@ -39,7 +39,7 @@ export const INITIAL_VIDEOS: ShortVideoItem[] = [
       volume: 0.18
     },
     visuals: {
-      primaryImageUrl: '/src/assets/images/news_world_hero_summit_1793632290118.jpg',
+      primaryImageUrl: '/images/news_world_hero_summit_1793632290118.jpg',
       motionEffect: 'ken-burns',
       watermarkText: 'NEWS WORLD | 9:16 HD',
       hasTicker: true,
@@ -100,7 +100,7 @@ export const INITIAL_VIDEOS: ShortVideoItem[] = [
       volume: 0.15
     },
     visuals: {
-      primaryImageUrl: '/src/assets/images/news_world_space_telescope_1793632290606.jpg',
+      primaryImageUrl: '/images/news_world_space_telescope_1793632290606.jpg',
       motionEffect: 'slow-zoom',
       watermarkText: 'NEWS WORLD SPACE | 9:16',
       hasTicker: true,

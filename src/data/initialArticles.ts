@@ -25,7 +25,7 @@ The compact also institutes rigorous transparency protocols for critical mineral
     categorySlug: 'international-news',
     status: 'published',
     featuredImage: {
-      url: '/src/assets/images/news_world_hero_summit_1793632290118.jpg',
+      url: '/images/news_world_hero_summit_1793632290118.jpg',
       prompt: 'High-contrast documentary editorial photo of global leaders and scientists gathered around a circular international climate and energy summit table, natural dramatic lighting, muted color grading',
       model: 'imagen-3.0-generate-002',
       generatedAt: '2026-11-01T14:30:00Z',
@@ -99,7 +99,7 @@ While researchers emphasize that hydrocarbon markers alone do not establish biol
     categorySlug: 'space-astronomy',
     status: 'published',
     featuredImage: {
-      url: '/src/assets/images/news_world_space_telescope_1793632290606.jpg',
+      url: '/images/news_world_space_telescope_1793632290606.jpg',
       prompt: 'Cinematic wide photograph of a deep-space deep-field observation control room with astronomers looking at cosmic nebula and stellar spectra on wide monitors',
       model: 'imagen-3.0-generate-002',
       generatedAt: '2026-11-01T16:00:00Z',
@@ -167,7 +167,7 @@ During blindfolded laboratory evaluation across thirty test subjects, participan
     categorySlug: 'ai-innovation',
     status: 'published',
     featuredImage: {
-      url: '/src/assets/images/news_world_ai_robotics_1793632291267.jpg',
+      url: '/images/news_world_ai_robotics_1793632291267.jpg',
       prompt: 'Documentary editorial photograph of international robotics engineers working on a precision bionic hand in a modern research laboratory',
       model: 'imagen-3.0-generate-002',
       generatedAt: '2026-11-01T17:00:00Z',
@@ -235,7 +235,7 @@ Over seventy-five 16-megawatt turbines are synchronized through automated unders
     categorySlug: 'environment-climate',
     status: 'published',
     featuredImage: {
-      url: '/src/assets/images/news_world_clean_energy_1793632291151.jpg',
+      url: '/images/news_world_clean_energy_1793632291151.jpg',
       prompt: 'Wide angle landscape photograph of offshore floating wind turbines and solar research floating arrays in the North Sea at dusk, editorial documentary photojournalism',
       model: 'imagen-3.0-generate-002',
       generatedAt: '2026-11-01T17:30:00Z',
@@ -303,7 +303,7 @@ The panel concluded that publishing unverified information or generating decepti
     categorySlug: 'islamic-knowledge',
     status: 'published',
     featuredImage: {
-      url: '/src/assets/images/news_world_hero_summit_1793632290118.jpg',
+      url: '/images/news_world_hero_summit_1793632290118.jpg',
       prompt: 'Reflective documentary photograph of Islamic manuscripts and calligraphy scholars studying ancient texts in a serene archival library',
       model: 'imagen-3.0-generate-002',
       generatedAt: '2026-10-31T08:00:00Z',
@@ -384,7 +384,7 @@ Candidates are strictly cautioned against third-party recruitment agencies or pa
     categorySlug: 'jobs-careers',
     status: 'published',
     featuredImage: {
-      url: '/src/assets/images/news_world_ai_robotics_1793632291267.jpg',
+      url: '/images/news_world_ai_robotics_1793632291267.jpg',
       prompt: 'Documentary photograph of engineering researchers in advanced physics laboratory with electronic monitors and scientific apparatus',
       model: 'imagen-3.0-generate-002',
       generatedAt: '2026-10-30T10:00:00Z',
@@ -448,7 +448,7 @@ The research coordinates with satellite sea-surface height models to forecast oc
     categorySlug: 'science',
     status: 'pending',
     featuredImage: {
-      url: '/src/assets/images/news_world_clean_energy_1793632291151.jpg',
+      url: '/images/news_world_clean_energy_1793632291151.jpg',
       prompt: 'Documentary photograph of unmanned solar ocean drone vessel sailing through deep blue oceanic swells at sunset',
       model: 'imagen-3.0-generate-002',
       generatedAt: '2026-11-02T04:00:00Z',

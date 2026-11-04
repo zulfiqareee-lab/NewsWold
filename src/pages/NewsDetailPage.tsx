@@ -3,6 +3,7 @@ import { useLanguage } from '../contexts/LanguageContext';
 import { useNav } from '../contexts/NavigationContext';
 import { NewsArticle } from '../types';
 import { NewsCard } from '../components/NewsCard';
+import { SafeImage } from '../components/common/SafeImage';
 import {
   Sparkles,
   CheckCircle2,
@@ -29,7 +30,7 @@ interface NewsDetailPageProps {
 
 export const NewsDetailPage: React.FC<NewsDetailPageProps> = ({ articleId }) => {
   const { lang, t, formatNumber } = useLanguage();
-  const { goToCategory, goToHome, goToCopyrightRemoval } = useNav();
+  const { goToCategory, goToHome } = useNav();
 
   const [article, setArticle] = useState<NewsArticle | null>(null);
   const [related, setRelated] = useState<NewsArticle[]>([]);
@@ -249,11 +250,11 @@ export const NewsDetailPage: React.FC<NewsDetailPageProps> = ({ articleId }) => 
 
       {/* Featured Editorial Visual with Provenance Badge */}
       <figure className="space-y-2">
-        <div className="relative overflow-hidden rounded-lg bg-stone-100 dark:bg-stone-900 aspect-[16/9] shadow-sm">
-          <img
-            src={article.featuredImage.url}
-            alt={lang === 'bn' ? article.featuredImage.altTextBn : article.featuredImage.altTextEn}
-            referrerPolicy="no-referrer"
+        <div className="relative overflow-hidden rounded-xl bg-stone-900 aspect-[16/9] shadow-md">
+          <SafeImage
+            src={article.featuredImage?.url}
+            alt={lang === 'bn' ? article.featuredImage?.altTextBn : article.featuredImage?.altTextEn}
+            categorySlug={article.categorySlug}
             className="w-full h-full object-cover"
           />
 
@@ -449,13 +450,9 @@ export const NewsDetailPage: React.FC<NewsDetailPageProps> = ({ articleId }) => 
               ? 'নিউজ ওয়ার্ল্ড কোনো সংবাদ সরাসরি নকল করে না। সকল তথ্য বহুভাষিক সমন্বয়ে প্রস্তুত।'
               : 'NEWS WORLD does not copy third-party articles verbatim. Content is uniquely synthesized.'}
           </span>
-          <button
-            onClick={() => goToCopyrightRemoval(article.id, article.headlineEn)}
-            className="text-rose-600 dark:text-rose-400 hover:underline flex items-center gap-1 font-medium"
-          >
-            <Flag className="w-3 h-3" />
-            <span>{lang === 'bn' ? 'কপিরাইট আপত্তি জানান' : 'Report Copyright Issue'}</span>
-          </button>
+          <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+            {lang === 'bn' ? '✓ আন্তর্জাতিক ফ্যাক্ট-চেক যাচিত' : '✓ Verified International Reporting'}
+          </span>
         </div>
       </div>
 

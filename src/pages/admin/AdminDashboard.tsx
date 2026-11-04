@@ -150,6 +150,31 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
+  // Bulk 100+ News Generator State & Handler
+  const [generatingBulk, setGeneratingBulk] = useState<boolean>(false);
+
+  const handleBulkGenerateNews = async (count: number = 100) => {
+    try {
+      setGeneratingBulk(true);
+      const res = await fetch('/api/admin/bot/generate-bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ count })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        showNotification(data.message);
+        await fetchAllAdminData();
+      } else {
+        showNotification(data.error || 'Failed to generate bulk articles', 'error');
+      }
+    } catch (err: any) {
+      showNotification(err.message, 'error');
+    } finally {
+      setGeneratingBulk(false);
+    }
+  };
+
   const handleUpdateBotSettings = async (enabled?: boolean, intervalMinutes?: number, autoPublishDirectly?: boolean) => {
     try {
       const res = await fetch('/api/admin/bot/settings', {
@@ -917,7 +942,20 @@ export const AdminDashboard: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <button
+                      onClick={() => handleBulkGenerateNews(100)}
+                      disabled={generatingBulk}
+                      className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-50 text-stone-950 font-bold text-xs flex items-center gap-2 shadow-md transition-colors cursor-pointer"
+                    >
+                      <Sparkles className={`w-4 h-4 ${generatingBulk ? 'animate-spin' : ''}`} />
+                      <span>
+                        {generatingBulk
+                          ? (lang === 'bn' ? '১০০+ নিউজ তৈরি হচ্ছে...' : 'Generating 100+ News...')
+                          : (lang === 'bn' ? '🚀 এক ক্লিকে ১০০+ নিউজ তৈরি করুন' : '🚀 Bulk Generate 100+ News')}
+                      </span>
+                    </button>
+
                     <button
                       onClick={handleTriggerBotNow}
                       disabled={triggeringBot}
@@ -927,7 +965,7 @@ export const AdminDashboard: React.FC = () => {
                       <span>
                         {triggeringBot
                           ? (lang === 'bn' ? 'নিউজ তৈরি হচ্ছে...' : 'Generating News...')
-                          : (lang === 'bn' ? '⚡ এখনই নিউজ তৈরি করুন (Run Now)' : '⚡ Run Auto News Bot Now')}
+                          : (lang === 'bn' ? '⚡ এখনই রান করুন (Run Now)' : '⚡ Run Auto News Bot Now')}
                       </span>
                     </button>
                   </div>
@@ -1335,18 +1373,33 @@ export const AdminDashboard: React.FC = () => {
                   </p>
                 </div>
 
-                <button
-                  onClick={handleTriggerBotNow}
-                  disabled={triggeringBot}
-                  className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-stone-950 font-bold text-xs flex items-center gap-2 shadow-sm transition-colors cursor-pointer shrink-0"
-                >
-                  <Zap className={`w-4 h-4 ${triggeringBot ? 'animate-spin' : ''}`} />
-                  <span>
-                    {triggeringBot
-                      ? (lang === 'bn' ? 'স্বয়ংক্রিয় তৈরি হচ্ছে...' : 'Generating...')
-                      : (lang === 'bn' ? '⚡ স্বয়ংক্রিয় তৈরি করুন (Auto Bot Run)' : '⚡ Run Auto News Bot Now')}
-                  </span>
-                </button>
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    onClick={() => handleBulkGenerateNews(100)}
+                    disabled={generatingBulk}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 disabled:opacity-50 text-stone-950 font-bold text-xs flex items-center gap-2 shadow-md transition-colors cursor-pointer shrink-0"
+                  >
+                    <Sparkles className={`w-4 h-4 ${generatingBulk ? 'animate-spin' : ''}`} />
+                    <span>
+                      {generatingBulk
+                        ? (lang === 'bn' ? '১০০+ নিউজ তৈরি হচ্ছে...' : 'Generating 100+...')
+                        : (lang === 'bn' ? '🚀 এক ক্লিকে ১০০+ নিউজ তৈরি করুন' : '🚀 Bulk Generate 100+ Articles')}
+                    </span>
+                  </button>
+
+                  <button
+                    onClick={handleTriggerBotNow}
+                    disabled={triggeringBot}
+                    className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-stone-950 font-bold text-xs flex items-center gap-2 shadow-sm transition-colors cursor-pointer shrink-0"
+                  >
+                    <Zap className={`w-4 h-4 ${triggeringBot ? 'animate-spin' : ''}`} />
+                    <span>
+                      {triggeringBot
+                        ? (lang === 'bn' ? 'স্বয়ংক্রিয় তৈরি হচ্ছে...' : 'Generating...')
+                        : (lang === 'bn' ? '⚡ স্বয়ংক্রিয় রান (Run Auto Bot)' : '⚡ Run Auto News Bot Now')}
+                    </span>
+                  </button>
+                </div>
               </div>
 
               {/* Bot Auto-Pilot Mode Banner */}

@@ -5,20 +5,25 @@ import { NewsArticle } from '../types';
 import { NewsCard } from '../components/NewsCard';
 import { WeatherCurrencyRibbon } from '../components/WeatherCurrencyRibbon';
 import { CATEGORIES } from '../data/categories';
+import { INITIAL_ARTICLES } from '../data/initialArticles';
+import { generateBulkNewsArticles } from '../data/bulkNewsGenerator';
 import { Sparkles, Radio, TrendingUp, Flame, ArrowRight, ShieldCheck } from 'lucide-react';
 
 export const HomePage: React.FC = () => {
   const { lang, t, formatNumber } = useLanguage();
   const { goToLatest, goToBreaking, goToTrending, goToMostRead, goToCategory, goToArticle } = useNav();
 
-  const [articles, setArticles] = useState<NewsArticle[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [articles, setArticles] = useState<NewsArticle[]>(() => [
+    ...INITIAL_ARTICLES,
+    ...generateBulkNewsArticles(25)
+  ]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     fetch('/api/news')
       .then((res) => res.json())
       .then((json) => {
-        if (json.data) setArticles(json.data);
+        if (json.data && json.data.length > 0) setArticles(json.data);
       })
       .catch((err) => console.error('Failed to load articles:', err))
       .finally(() => setLoading(false));
@@ -31,10 +36,11 @@ export const HomePage: React.FC = () => {
   const breakingStories = articles.filter((a) => a.isBreaking);
 
   // Group news by category for selected highlight blocks
+  const islamicNews = articles.filter((a) => a.categorySlug === 'islamic-knowledge').slice(0, 3);
+  const motivationalNews = articles.filter((a) => a.categorySlug === 'motivation-lifestyle').slice(0, 3);
+  const educationJobsNews = articles.filter((a) => a.categorySlug === 'education' || a.categorySlug === 'jobs-careers').slice(0, 3);
   const scienceNews = articles.filter((a) => a.categorySlug === 'science' || a.categorySlug === 'space-astronomy').slice(0, 3);
   const techAiNews = articles.filter((a) => a.categorySlug === 'technology' || a.categorySlug === 'ai-innovation').slice(0, 3);
-  const lifestyleJobsNews = articles.filter((a) => a.categorySlug === 'jobs-careers' || a.categorySlug === 'education' || a.categorySlug === 'islamic-knowledge').slice(0, 3);
-  const climateWorldNews = articles.filter((a) => a.categorySlug === 'international-news' || a.categorySlug === 'environment-climate').slice(0, 3);
 
   return (
     <div className="space-y-8 pb-16">
@@ -170,30 +176,92 @@ export const HomePage: React.FC = () => {
           </div>
         </section>
 
-        {/* 3. Global Careers, Education & Islamic Knowledge */}
-        <section className="pt-6 border-t border-stone-200 dark:border-stone-800 space-y-4">
-          <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-stone-800">
-            <div>
-              <span className="text-[11px] uppercase tracking-widest font-semibold text-stone-400">Department</span>
-              <h2 className="font-editorial-title text-2xl font-bold text-stone-900 dark:text-stone-100">
-                {lang === 'bn' ? 'জ্ঞান, নীতিশাস্ত্র ও কর্মসংস্থান' : 'Careers, Knowledge & Ethics'}
-              </h2>
+        {/* 3. Islamic Knowledge Showcase */}
+        {islamicNews.length > 0 && (
+          <section className="pt-6 border-t border-stone-200 dark:border-stone-800 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-stone-800">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] uppercase tracking-widest font-semibold px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300">
+                  {lang === 'bn' ? '🕌 ইসলামিক জ্ঞান' : 'Islamic Knowledge'}
+                </span>
+                <h2 className="font-editorial-title text-2xl font-bold text-stone-900 dark:text-stone-100">
+                  {lang === 'bn' ? 'কুরআন ও সহীহ হাদিসের আলোকে জীবনদর্শন' : 'Islamic Ethics & Guidance'}
+                </h2>
+              </div>
+              <button
+                onClick={() => goToCategory('islamic-knowledge')}
+                className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline flex items-center gap-1 uppercase tracking-wider"
+              >
+                <span>{lang === 'bn' ? 'সকল ইসলামিক সংবাদ' : 'View All'}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </div>
-            <button
-              onClick={() => goToCategory('jobs-careers')}
-              className="text-xs font-semibold text-stone-600 dark:text-stone-400 hover:text-amber-800 dark:hover:text-amber-400 flex items-center gap-1 transition-colors uppercase tracking-wider"
-            >
-              <span>{lang === 'bn' ? 'আরও পড়ুন' : 'Explore Section'}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {lifestyleJobsNews.map((art) => (
-              <NewsCard key={art.id} article={art} variant="secondary" />
-            ))}
-          </div>
-        </section>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {islamicNews.map((art) => (
+                <NewsCard key={art.id} article={art} variant="secondary" />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 4. Motivation & Lifestyle Showcase */}
+        {motivationalNews.length > 0 && (
+          <section className="pt-6 border-t border-stone-200 dark:border-stone-800 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-stone-800">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] uppercase tracking-widest font-semibold px-2 py-0.5 rounded bg-amber-100 text-amber-800 dark:bg-amber-950/80 dark:text-amber-300">
+                  {lang === 'bn' ? '💡 অনুপ্রেরণা' : 'Motivation'}
+                </span>
+                <h2 className="font-editorial-title text-2xl font-bold text-stone-900 dark:text-stone-100">
+                  {lang === 'bn' ? 'অনুপ্রেরণা, আত্মউন্নয়ন ও জীবনধারা' : 'Motivation & Lifestyle'}
+                </h2>
+              </div>
+              <button
+                onClick={() => goToCategory('motivation-lifestyle')}
+                className="text-xs font-semibold text-amber-700 dark:text-amber-400 hover:underline flex items-center gap-1 uppercase tracking-wider"
+              >
+                <span>{lang === 'bn' ? 'সকল অনুপ্রেরণামূলক সংবাদ' : 'View All'}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {motivationalNews.map((art) => (
+                <NewsCard key={art.id} article={art} variant="secondary" />
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* 5. Education & Careers Showcase */}
+        {educationJobsNews.length > 0 && (
+          <section className="pt-6 border-t border-stone-200 dark:border-stone-800 space-y-4">
+            <div className="flex items-center justify-between pb-2 border-b border-stone-200 dark:border-stone-800">
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] uppercase tracking-widest font-semibold px-2 py-0.5 rounded bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300">
+                  {lang === 'bn' ? '🎓 শিক্ষা ও ক্যারিয়ার' : 'Education & Jobs'}
+                </span>
+                <h2 className="font-editorial-title text-2xl font-bold text-stone-900 dark:text-stone-100">
+                  {lang === 'bn' ? 'আন্তর্জাতিক উচ্চশিক্ষা, স্কলারশিপ ও ক্যারিয়ার' : 'Scholarships & Career Guidance'}
+                </h2>
+              </div>
+              <button
+                onClick={() => goToCategory('education')}
+                className="text-xs font-semibold text-blue-700 dark:text-blue-400 hover:underline flex items-center gap-1 uppercase tracking-wider"
+              >
+                <span>{lang === 'bn' ? 'আরও পড়ুন' : 'Explore'}</span>
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {educationJobsNews.map((art) => (
+                <NewsCard key={art.id} article={art} variant="secondary" />
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* All 16 Category Quick Navigator Banner */}
         <section className="p-6 rounded-xl bg-stone-100 dark:bg-stone-900 border border-stone-200 dark:border-stone-800 space-y-4">
